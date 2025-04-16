@@ -15,9 +15,7 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
     logoutMutation.mutate(undefined, {
       onSuccess: () => {
         setLocation('/auth');
-      },
-      onSuccess: () => {
-        setLocation('/auth');
+        window.location.reload();
       }
     });
   };
