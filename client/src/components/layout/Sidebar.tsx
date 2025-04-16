@@ -4,10 +4,16 @@ import { cn } from "@/lib/utils";
 interface SidebarProps {
   isMobileOpen: boolean;
   closeMobileSidebar: () => void;
-  handleClick: (link: { href: string; label: string; icon: string }) => void; // Added handleClick type
 }
 
-const Sidebar = ({ isMobileOpen, closeMobileSidebar, handleClick }: SidebarProps) => {
+const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
+  const { logoutMutation } = useAuth();
+  
+  const handleClick = (link: { href: string; label: string; icon: string }) => {
+    if (link.label === "Logout") {
+      logoutMutation.mutate();
+    }
+  };
   const [location] = useLocation();
 
   // Navigation links
