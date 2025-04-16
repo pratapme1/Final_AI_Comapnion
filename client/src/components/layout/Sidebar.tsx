@@ -4,9 +4,10 @@ import { cn } from "@/lib/utils";
 interface SidebarProps {
   isMobileOpen: boolean;
   closeMobileSidebar: () => void;
+  handleClick: (link: { href: string; label: string; icon: string }) => void; // Added handleClick type
 }
 
-const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
+const Sidebar = ({ isMobileOpen, closeMobileSidebar, handleClick }: SidebarProps) => {
   const [location] = useLocation();
 
   // Navigation links
@@ -222,7 +223,7 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
           <ul className="mt-2 space-y-1">
             {settingsLinks.map((link) => (
               <li key={link.href}>
-                <Link href={link.href}>
+                <Link onClick={() => handleClick(link)} href={link.href || '#'} > {/* Modified line */}
                   <span
                     className={cn(
                       "flex items-center px-4 py-2 text-sm rounded-md cursor-pointer",
