@@ -4,8 +4,12 @@ import { storage } from "./storage";
 import { z } from "zod";
 import schedule from "node-schedule";
 import { categorizeItems, generateInsight, generateSavingsSuggestion, detectRecurring, generateWeeklyDigest } from "./ai";
+import { setupAuth } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Set up authentication routes
+  setupAuth(app);
+  
   const httpServer = createServer(app);
   
   // Define API routes with /api prefix

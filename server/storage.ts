@@ -8,6 +8,11 @@ import {
 } from "@shared/schema";
 
 // Storage interface with all CRUD methods
+import session from "express-session";
+import createMemoryStore from "memorystore";
+
+const MemoryStore = createMemoryStore(session);
+
 export interface IStorage {
   // User methods
   getUser(id: number): Promise<User | undefined>;
@@ -46,6 +51,9 @@ export interface IStorage {
   getBudgetStatuses(userId: number): Promise<BudgetStatus[]>;
   getCategorySpending(userId: number): Promise<CategorySpending[]>;
   getMonthlySpending(userId: number, months: number): Promise<MonthlySpending[]>;
+
+  // Session store
+  sessionStore: session.SessionStore;
 }
 
 export class MemStorage implements IStorage {
@@ -61,6 +69,8 @@ export class MemStorage implements IStorage {
   private currentReceiptId: number;
   private currentInsightId: number;
   
+  public sessionStore: session.SessionStore;
+  
   constructor() {
     this.users = new Map();
     this.categories = new Map();
@@ -73,6 +83,11 @@ export class MemStorage implements IStorage {
     this.currentBudgetId = 1;
     this.currentReceiptId = 1;
     this.currentInsightId = 1;
+    
+    // Initialize session store
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000, // Prune expired entries every 24h
+    });
     
     // Initialize with default categories
     this.initializeCategories();
