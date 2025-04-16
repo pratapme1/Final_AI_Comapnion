@@ -39,7 +39,7 @@ const Receipts = () => {
               </p>
             </div>
             <div className="mt-4 md:mt-0">
-              <Link href="/receipts/upload">
+              <Link to="/receipts/upload">
                 <Button className="inline-flex items-center">
                   <Plus className="mr-2 h-4 w-4" />
                   Upload Receipt
@@ -99,7 +99,7 @@ const Receipts = () => {
           />
         </Route>
 
-        <Route path="/receipts/upload">
+        <Route path="/receipts/upload" exact>
           <div className="mb-6">
             <Link href="/receipts">
               <Button variant="outline" className="mb-4">
