@@ -9,7 +9,7 @@ interface SidebarProps {
 
 const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
   const { logoutMutation } = useAuth();
-  
+
   const handleClick = (link: { href: string; label: string; icon: string }) => {
     if (link.label === "Logout") {
       logoutMutation.mutate();
@@ -230,7 +230,16 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
           <ul className="mt-2 space-y-1">
             {settingsLinks.map((link) => (
               <li key={link.href}>
-                <Link onClick={() => handleClick(link)} href={link.href || '#'} > {/* Modified line */}
+                <a
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (link.label === "Logout") {
+                      logoutMutation.mutate();
+                    }
+                  }}
+                  href="#"
+                  className="block"
+                >
                   <span
                     className={cn(
                       "flex items-center px-4 py-2 text-sm rounded-md cursor-pointer",
@@ -242,7 +251,7 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
                     {renderIcon(link.icon)}
                     {link.label}
                   </span>
-                </Link>
+                </a>
               </li>
             ))}
           </ul>
