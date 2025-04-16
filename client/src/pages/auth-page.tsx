@@ -10,6 +10,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useToast } from "@/hooks/use-toast";
 
 // Create form schemas
 const loginSchema = z.object({
@@ -45,8 +46,17 @@ const AuthPage = () => {
     },
   });
 
+  const { toast } = useToast();
   const onLogin = (data: LoginFormValues) => {
-    loginMutation.mutate(data);
+    loginMutation.mutate(data, {
+      onSuccess: () => {
+        toast({
+          title: "Success",
+          description: "Logged in successfully",
+          variant: "default",
+        });
+      }
+    });
   };
 
   const onRegister = (data: RegisterFormValues) => {
