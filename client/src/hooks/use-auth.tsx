@@ -47,6 +47,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (user: SelectUser) => {
       console.log("Login successful, updating user data:", user);
       queryClient.setQueryData(["/api/user"], user);
+      
+      // Force a refetch of the user data to ensure everything is in sync
+      queryClient.invalidateQueries({
+        queryKey: ["/api/user"]
+      });
     },
     onError: (error: Error) => {
       console.error("Login mutation error:", error);
@@ -74,6 +79,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (user: SelectUser) => {
       console.log("Registration successful, updating user data:", user);
       queryClient.setQueryData(["/api/user"], user);
+      
+      // Force a refetch of the user data to ensure everything is in sync
+      queryClient.invalidateQueries({
+        queryKey: ["/api/user"]
+      });
     },
     onError: (error: Error) => {
       console.error("Registration mutation error:", error);
@@ -99,6 +109,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: () => {
       console.log("Logout mutation completed, clearing user data");
       queryClient.setQueryData(["/api/user"], null);
+      // Invalidate any cached user data to ensure clean state
+      queryClient.invalidateQueries({
+        queryKey: ["/api/user"]
+      });
     },
     onError: (error: Error) => {
       console.error("Logout mutation error:", error);

@@ -55,6 +55,7 @@ const AuthPage = () => {
 
   // Redirect if already logged in
   if (user) {
+    console.log("User authenticated, redirecting to dashboard:", user);
     return <Redirect to="/" />;
   }
 
