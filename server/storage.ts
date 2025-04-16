@@ -6,12 +6,16 @@ import {
   insights, type Insight, type InsertInsight,
   type Stats, type BudgetStatus, type CategorySpending, type MonthlySpending
 } from "@shared/schema";
+import { db, pool } from "./db";
+import { and, eq, desc, gte, lte } from "drizzle-orm";
 
 // Storage interface with all CRUD methods
 import session from "express-session";
 import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
 
 const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   // User methods
@@ -471,4 +475,366 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database Implementation
+export class DatabaseStorage implements IStorage {
+  public sessionStore: any; // Fix type issue with session.SessionStore
+
+  constructor() {
+    // Initialize the session store using PostgreSQL
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true,
+    });
+  }
+
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    const [createdUser] = await db.insert(users).values(user).returning();
+    return createdUser;
+  }
+
+  // Category methods
+  async getCategories(): Promise<Category[]> {
+    return db.select().from(categories);
+  }
+
+  async getCategoryByName(name: string): Promise<Category | undefined> {
+    const [category] = await db.select().from(categories).where(eq(categories.name, name));
+    return category;
+  }
+
+  async createCategory(category: InsertCategory): Promise<Category> {
+    const [createdCategory] = await db.insert(categories).values(category).returning();
+    return createdCategory;
+  }
+
+  // Budget methods
+  async getBudgets(userId: number): Promise<Budget[]> {
+    return db.select().from(budgets).where(eq(budgets.userId, userId));
+  }
+
+  async getBudgetsByMonth(userId: number, month: string): Promise<Budget[]> {
+    return db.select().from(budgets).where(
+      and(
+        eq(budgets.userId, userId),
+        eq(budgets.month, month)
+      )
+    );
+  }
+
+  async getBudget(userId: number, category: string, month: string): Promise<Budget | undefined> {
+    const [budget] = await db.select().from(budgets).where(
+      and(
+        eq(budgets.userId, userId),
+        eq(budgets.category, category),
+        eq(budgets.month, month)
+      )
+    );
+    return budget;
+  }
+
+  async createBudget(budget: InsertBudget): Promise<Budget> {
+    // Convert number to string for limit
+    const dbBudget = {
+      ...budget,
+      limit: budget.limit.toString()
+    };
+    const [createdBudget] = await db.insert(budgets).values(dbBudget).returning();
+    return createdBudget;
+  }
+
+  async updateBudget(id: number, limit: number): Promise<Budget | undefined> {
+    const [updatedBudget] = await db
+      .update(budgets)
+      .set({ limit: limit.toString() })
+      .where(eq(budgets.id, id))
+      .returning();
+    return updatedBudget;
+  }
+
+  async deleteBudget(id: number): Promise<boolean> {
+    const result = await db.delete(budgets).where(eq(budgets.id, id));
+    return !!result;
+  }
+
+  // Receipt methods
+  async getReceipts(userId: number): Promise<Receipt[]> {
+    return db
+      .select()
+      .from(receipts)
+      .where(eq(receipts.userId, userId))
+      .orderBy(desc(receipts.date));
+  }
+
+  async getReceiptsByDateRange(userId: number, startDate: Date, endDate: Date): Promise<Receipt[]> {
+    return db
+      .select()
+      .from(receipts)
+      .where(
+        and(
+          eq(receipts.userId, userId),
+          gte(receipts.date, startDate),
+          lte(receipts.date, endDate)
+        )
+      )
+      .orderBy(desc(receipts.date));
+  }
+
+  async getReceipt(id: number): Promise<Receipt | undefined> {
+    const [receipt] = await db.select().from(receipts).where(eq(receipts.id, id));
+    return receipt;
+  }
+
+  async createReceipt(receipt: InsertReceipt): Promise<Receipt> {
+    // Convert number to string for total
+    const dbReceipt = {
+      ...receipt,
+      total: receipt.total.toString()
+    };
+    const [createdReceipt] = await db.insert(receipts).values(dbReceipt).returning();
+    return createdReceipt;
+  }
+
+  async updateReceiptItem(receiptId: number, itemIndex: number, updates: Partial<ReceiptItem>): Promise<Receipt | undefined> {
+    const receipt = await this.getReceipt(receiptId);
+    if (!receipt || !receipt.items[itemIndex]) return undefined;
+    
+    const updatedItems = [...receipt.items];
+    updatedItems[itemIndex] = { ...updatedItems[itemIndex], ...updates };
+    
+    const [updatedReceipt] = await db
+      .update(receipts)
+      .set({ items: updatedItems })
+      .where(eq(receipts.id, receiptId))
+      .returning();
+    
+    return updatedReceipt;
+  }
+
+  // Insight methods
+  async getInsights(userId: number): Promise<Insight[]> {
+    return db
+      .select()
+      .from(insights)
+      .where(eq(insights.userId, userId))
+      .orderBy(desc(insights.date));
+  }
+
+  async getInsightsByType(userId: number, type: string): Promise<Insight[]> {
+    return db
+      .select()
+      .from(insights)
+      .where(
+        and(
+          eq(insights.userId, userId),
+          eq(insights.type, type)
+        )
+      )
+      .orderBy(desc(insights.date));
+  }
+
+  async getInsight(id: number): Promise<Insight | undefined> {
+    const [insight] = await db.select().from(insights).where(eq(insights.id, id));
+    return insight;
+  }
+
+  async createInsight(insight: InsertInsight): Promise<Insight> {
+    const [createdInsight] = await db.insert(insights).values(insight).returning();
+    return createdInsight;
+  }
+
+  async markInsightAsRead(id: number): Promise<Insight | undefined> {
+    const [updatedInsight] = await db
+      .update(insights)
+      .set({ read: true })
+      .where(eq(insights.id, id))
+      .returning();
+    return updatedInsight;
+  }
+
+  // Stats methods - These are calculation-heavy and don't store data directly
+  async getStats(userId: number): Promise<Stats> {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    
+    // Get all receipts for the current month
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    const receipts = await this.getReceiptsByDateRange(userId, startOfMonth, endOfMonth);
+    const budgets = await this.getBudgetsByMonth(userId, currentMonth);
+    
+    // Calculate total spend
+    const totalSpend = receipts.reduce((sum, receipt) => sum + Number(receipt.total), 0);
+    
+    // Calculate budget total and remaining
+    const budgetTotal = budgets.reduce((sum, budget) => sum + Number(budget.limit), 0);
+    const budgetRemaining = Math.max(0, budgetTotal - totalSpend);
+    
+    // Count potential savings based on insights
+    const savingsInsights = await this.getInsightsByType(userId, 'saving');
+    const potentialSavings = savingsInsights.length * 150; // Approximation for demo
+    
+    // Count recurring expenses
+    const recurringItems = receipts.flatMap(receipt => 
+      receipt.items.filter(item => item.recurring)
+    );
+    const recurringTotal = recurringItems.reduce((sum, item) => sum + item.price, 0);
+    
+    // Count unique subscriptions by name
+    const subscriptionNames = new Set(
+      recurringItems
+        .filter(item => item.name.toLowerCase().includes('subscription') || 
+                       item.name.toLowerCase().includes('netflix') ||
+                       item.name.toLowerCase().includes('prime') ||
+                       item.name.toLowerCase().includes('disney'))
+        .map(item => item.name)
+    );
+    
+    // Calculate spending trend (dummy value for development)
+    const spendingTrend = 12.5;
+    
+    return {
+      totalSpend,
+      budgetRemaining,
+      potentialSavings,
+      suggestionsCount: savingsInsights.length,
+      recurringExpenses: recurringTotal,
+      subscriptionsCount: subscriptionNames.size,
+      spendingTrend
+    };
+  }
+
+  async getBudgetStatuses(userId: number): Promise<BudgetStatus[]> {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const budgets = await this.getBudgetsByMonth(userId, currentMonth);
+    
+    if (budgets.length === 0) {
+      return [];
+    }
+    
+    // Get receipts for current month
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const receipts = await this.getReceiptsByDateRange(userId, startOfMonth, endOfMonth);
+    
+    // Calculate spending by category
+    const categorySpending: Record<string, number> = {};
+    
+    receipts.forEach(receipt => {
+      receipt.items.forEach(item => {
+        if (item.category) {
+          categorySpending[item.category] = (categorySpending[item.category] || 0) + item.price;
+        }
+      });
+    });
+    
+    // Create budget status for each budget
+    return budgets.map(budget => {
+      const spent = categorySpending[budget.category] || 0;
+      const percentage = Math.min(100, Math.round((spent / Number(budget.limit)) * 100));
+      
+      let status: 'normal' | 'warning' | 'exceeded' = 'normal';
+      if (percentage >= 100) {
+        status = 'exceeded';
+      } else if (percentage >= 80) {
+        status = 'warning';
+      }
+      
+      return {
+        category: budget.category,
+        spent,
+        limit: Number(budget.limit),
+        percentage,
+        status
+      };
+    });
+  }
+
+  async getCategorySpending(userId: number): Promise<CategorySpending[]> {
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    const receipts = await this.getReceiptsByDateRange(userId, startOfMonth, endOfMonth);
+    
+    // Define colors for categories
+    const categoryColors: Record<string, string> = {
+      'Groceries': '#3B82F6', // blue
+      'Dining': '#EF4444', // red
+      'Utilities': '#10B981', // green
+      'Transportation': '#F59E0B', // amber
+      'Entertainment': '#8B5CF6', // purple
+      'Shopping': '#EC4899', // pink
+      'Health': '#14B8A6', // teal
+      'Travel': '#F97316', // orange
+      'Personal Care': '#6366F1', // indigo
+      'Others': '#6B7280', // gray
+    };
+    
+    // Calculate spending by category
+    const spending: Record<string, number> = {};
+    
+    receipts.forEach(receipt => {
+      receipt.items.forEach(item => {
+        const category = item.category || 'Others';
+        spending[category] = (spending[category] || 0) + item.price;
+      });
+    });
+    
+    // Format for return
+    return Object.entries(spending).map(([category, amount]) => ({
+      category,
+      amount,
+      color: categoryColors[category] || '#6B7280'
+    }));
+  }
+
+  async getMonthlySpending(userId: number, months: number = 6): Promise<MonthlySpending[]> {
+    const result: MonthlySpending[] = [];
+    const today = new Date();
+    
+    // Generate data for last n months
+    for (let i = months - 1; i >= 0; i--) {
+      const month = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const monthEnd = new Date(today.getFullYear(), today.getMonth() - i + 1, 0);
+      const monthStr = month.toLocaleString('default', { month: 'short' });
+      
+      const receipts = await this.getReceiptsByDateRange(userId, month, monthEnd);
+      
+      // Calculate total amount for the month
+      const amount = receipts.reduce((sum, receipt) => sum + Number(receipt.total), 0);
+      
+      // Calculate amount by category
+      const categories: Record<string, number> = {};
+      receipts.forEach(receipt => {
+        receipt.items.forEach(item => {
+          const category = item.category || 'Others';
+          categories[category] = (categories[category] || 0) + item.price;
+        });
+      });
+      
+      result.push({
+        month: monthStr,
+        amount,
+        categories
+      });
+    }
+    
+    return result;
+  }
+}
+
+// Use Database Storage instead of Memory Storage
+export const storage = new DatabaseStorage();

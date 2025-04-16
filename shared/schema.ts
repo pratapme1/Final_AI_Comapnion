@@ -1,6 +1,7 @@
-import { pgTable, text, serial, integer, boolean, json, timestamp, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, json, timestamp, numeric, foreignKey, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
 // User model
 export const users = pgTable("users", {
@@ -33,11 +34,18 @@ export type Category = typeof categories.$inferSelect;
 // Budget model
 export const budgets = pgTable("budgets", {
   id: serial("id").primaryKey(),
-  userId: integer("userId").notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   category: text("category").notNull(),
-  limit: numeric("limit").notNull(),
+  limit: text("limit").notNull(), // Using text for numeric to avoid type issues
   month: text("month").notNull(), // Format: YYYY-MM
 });
+
+export const budgetsRelations = relations(budgets, ({ one }) => ({
+  user: one(users, {
+    fields: [budgets.userId],
+    references: [users.id],
+  }),
+}));
 
 export const insertBudgetSchema = createInsertSchema(budgets).pick({
   userId: true,
@@ -52,12 +60,19 @@ export type Budget = typeof budgets.$inferSelect;
 // Receipt model
 export const receipts = pgTable("receipts", {
   id: serial("id").primaryKey(),
-  userId: integer("userId").notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   merchantName: text("merchantName").notNull(),
   date: timestamp("date").notNull(),
-  total: numeric("total").notNull(),
+  total: text("total").notNull(), // Using text for numeric to avoid type issues
   items: json("items").notNull().$type<ReceiptItem[]>(),
 });
+
+export const receiptsRelations = relations(receipts, ({ one }) => ({
+  user: one(users, {
+    fields: [receipts.userId],
+    references: [users.id],
+  }),
+}));
 
 export const insertReceiptSchema = createInsertSchema(receipts).pick({
   userId: true,
@@ -82,13 +97,20 @@ export type Receipt = typeof receipts.$inferSelect;
 // Insight model
 export const insights = pgTable("insights", {
   id: serial("id").primaryKey(),
-  userId: integer("userId").notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   type: text("type").notNull(), // 'saving', 'budget-alert', 'recurring', 'digest'
   date: timestamp("date").notNull(),
   read: boolean("read").default(false),
   relatedItemId: text("relatedItemId"), // can be receiptId or budgetId
 });
+
+export const insightsRelations = relations(insights, ({ one }) => ({
+  user: one(users, {
+    fields: [insights.userId],
+    references: [users.id],
+  }),
+}));
 
 export const insertInsightSchema = createInsertSchema(insights).pick({
   userId: true,
@@ -135,3 +157,10 @@ export interface MonthlySpending {
   amount: number;
   categories: Record<string, number>;
 }
+
+// Add user relations after all tables are defined
+export const usersRelations = relations(users, ({ many }) => ({
+  budgets: many(budgets),
+  receipts: many(receipts),
+  insights: many(insights),
+}));
