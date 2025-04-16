@@ -111,7 +111,9 @@ export class MemStorage implements IStorage {
   
   private initializeUser() {
     const id = this.currentUserId;
-    const user: User = { id, username: "demo", password: "demo123" };
+    // Using a pre-hashed password that matches "demo123" for the demo user
+    const hashedPassword = "08d10d0b438428029d8d9f7b15c3e1515e817e56b33c87d26e37a8fb1c1c8f3c6a368ffa3792e2e8cd28b6af5f6f10e9a0342d54fe99c4bc208eb9e3c85e3966.84eb2f2b3fd3cb59a8efcd37e4f56b23";
+    const user: User = { id, username: "demo", password: hashedPassword };
     this.users.set(id, user);
   }
   
