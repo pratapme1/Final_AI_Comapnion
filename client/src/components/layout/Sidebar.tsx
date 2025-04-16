@@ -9,7 +9,7 @@ interface SidebarProps {
 
 const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
   const { logoutMutation } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
@@ -36,7 +36,7 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
 
   // Check if a link is active
   const isActiveLink = (path: string) => {
-    return path === "/" ? location === path : location.startsWith(path);
+    return path === "/" ? location === path : location?.startsWith(path);
   };
 
   // Render icon component based on icon name
