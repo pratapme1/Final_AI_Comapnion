@@ -6,11 +6,14 @@ import Receipts from "./pages/Receipts";
 import Analytics from "./pages/Analytics";
 import Insights from "./pages/Insights";
 import NotFound from "./pages/not-found";
+import AuthPage from "./pages/auth-page";
 import Sidebar from "./components/layout/Sidebar";
 import MobileHeader from "./components/layout/MobileHeader";
 import { useState } from "react";
+import { AuthProvider } from "./hooks/use-auth";
+import { ProtectedRoute } from "./lib/protected-route";
 
-function App() {
+function Router() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const toggleSidebar = () => {
@@ -30,11 +33,12 @@ function App() {
         {/* Page Content */}
         <div className="py-6 px-4 sm:px-6 lg:px-8">
           <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/budgets" component={Budgets} />
-            <Route path="/receipts" component={Receipts} />
-            <Route path="/analytics" component={Analytics} />
-            <Route path="/insights" component={Insights} />
+            <ProtectedRoute path="/" component={Dashboard} />
+            <ProtectedRoute path="/budgets" component={Budgets} />
+            <ProtectedRoute path="/receipts" component={Receipts} />
+            <ProtectedRoute path="/analytics" component={Analytics} />
+            <ProtectedRoute path="/insights" component={Insights} />
+            <Route path="/auth" component={AuthPage} />
             <Route component={NotFound} />
           </Switch>
         </div>
@@ -42,6 +46,14 @@ function App() {
       
       <Toaster />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router />
+    </AuthProvider>
   );
 }
 

@@ -13,7 +13,7 @@ interface ReceiptsListProps {
 }
 
 const ReceiptsList = ({ searchTerm, sortBy, categoryFilter }: ReceiptsListProps) => {
-  const { data: receipts, isLoading } = useQuery({
+  const { data: receipts = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/receipts'],
   });
 

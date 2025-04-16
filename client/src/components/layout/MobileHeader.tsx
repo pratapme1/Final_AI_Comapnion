@@ -13,7 +13,7 @@ const MobileHeader = ({ toggleSidebar }: MobileHeaderProps) => {
           <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
         </svg>
         <Link href="/">
-          <a className="font-bold text-gray-800">Smart Ledger</a>
+          <span className="font-bold text-gray-800 cursor-pointer">Smart Ledger</span>
         </Link>
       </div>
       <button 
