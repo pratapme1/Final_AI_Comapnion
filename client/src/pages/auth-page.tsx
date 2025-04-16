@@ -47,6 +47,7 @@ const AuthPage = () => {
   });
 
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const onLogin = (data: LoginFormValues) => {
     loginMutation.mutate(data, {
       onSuccess: () => {
@@ -55,6 +56,7 @@ const AuthPage = () => {
           description: "Logged in successfully",
           variant: "default",
         });
+        setLocation('/');
       }
     });
   };
