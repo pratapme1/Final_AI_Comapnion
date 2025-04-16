@@ -14,8 +14,8 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
       onSuccess: () => {
+        queryClient.clear();
         setLocation('/auth');
-        window.location.reload();
       }
     });
   };

@@ -98,7 +98,6 @@ const Receipts = () => {
             categoryFilter={categoryFilter}
           />
         </Route>
-
         <Route path="/receipts/upload" exact>
           <div className="mb-6">
             <Link href="/receipts">
@@ -110,7 +109,6 @@ const Receipts = () => {
           </div>
           <ReceiptUpload />
         </Route>
-
         <Route path="/receipts/:id">
           {(params) => (
             <>
