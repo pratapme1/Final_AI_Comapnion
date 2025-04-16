@@ -1,0 +1,276 @@
+## Smart Ledger - AI Financial Insights Module Implementation Guide (LLM-Centric)
+
+---
+
+### 📌 Objective
+
+Build an AI-powered analytics module for "Smart Ledger" that delivers high-value insights using GPT and supporting APIs. The system must assist users in smart financial decision-making through:
+
+- Categorization
+- Budget tracking
+- Spending insights
+- Recurring detection
+- Savings suggestions
+- Digest reports
+
+**Target:** Designed for implementation using GPT or Claude (without human developers), this document serves as a complete build spec with workflows, prompts, schema updates, and UX descriptions.
+
+---
+
+### ✅ Features Covered
+
+1. Smart Categorization
+2. Budget Tracking & Alerts
+3. Recurring Expense Detection
+4. Savings Suggestions
+5. Weekly Smart Digest
+6. Real-Time Purchase Insight
+
+---
+
+## ✅ Feature 1: Smart Categorization
+
+### 🎯 Purpose
+
+Automatically assign categories (e.g., groceries, dining, utilities) to items extracted from receipt OCR.
+
+### 🧠 GPT Prompt Example
+
+```json
+{"prompt": "Categorize: 'Kellogg's Chocos 375g' into one of these: groceries, dining, utilities, travel, personal care."}
+```
+
+### 🧭 User Flow
+
+1. OCR extracts items → trigger categorization
+2. GPT assigns each item a category
+3. System saves it to DB
+4. Category is shown as label/chip in UI
+
+### ⚙️ Backend Logic
+
+- On receipt upload, categorize all items
+- Add `category` field to each item object
+
+#### MongoDB Schema (Receipt Model Update)
+
+```js
+items: [
+  {
+    name: String,
+    price: Number,
+    category: String // e.g., groceries
+  }
+]
+```
+
+---
+
+## ✅ Feature 2: Budget Tracking & Alerts
+
+### 🎯 Purpose
+
+Allow users to set monthly budgets per category and get alerts when nearing/exceeding those budgets.
+
+### 👥 User Actions
+
+- Add/edit budgets per category
+- View total spend vs budget
+- Get notification when near limit
+
+### 🧭 User Flow
+
+1. User configures budgets per category
+2. Each new expense adds to monthly total
+3. If total > 80% of budget → warning alert
+4. If > 100% → critical alert
+
+#### MongoDB Schema (New `budgetConfig` model)
+
+```js
+userId: ObjectId,
+category: String,
+limit: Number,
+month: String // e.g., '2025-04'
+```
+
+#### Alert Conditions
+
+```js
+if (totalSpend >= 0.8 * limit) → warn
+if (totalSpend >= limit) → alert
+```
+
+---
+
+## ✅ Feature 3: Recurring Expense Detection
+
+### 🎯 Purpose
+
+Automatically detect repeated purchases (e.g., monthly Netflix, groceries) and offer optimization suggestions.
+
+### 🧠 GPT Prompt Example
+
+```json
+{"prompt": "Is this item likely recurring? 'Netflix Subscription ₹499'"}
+```
+
+### 🧭 Logic Flow
+
+1. Search for same item bought ≥2 times in 30 days
+2. Mark item as `recurring: true`
+3. UI can display suggestion: “This item is recurring. Consider annual plan to save.”
+
+#### Schema Update (Receipt Model)
+
+```js
+recurring: Boolean // flag at item level
+```
+
+#### Cron Job
+
+- Run daily
+- Check receipts for repeat items
+- Set `recurring = true` if condition met
+
+---
+
+## ✅ Feature 4: Savings Suggestions
+
+### 🎯 Purpose
+
+Identify cheaper alternatives or bulk-buy suggestions for previously bought items.
+
+### 🧠 GPT Prompt Example
+
+```json
+{"prompt": "Suggest cheaper or bulk alternative for: 'Surf Excel Matic 2kg ₹498'"}
+```
+
+### 🧭 User Flow
+
+1. Post-OCR → compare item price with market
+2. If savings found → GPT crafts suggestion
+3. Display below item in receipt detail or savings tab
+
+#### Example Output
+
+“You paid ₹498 for Surf Excel. Buying a 4kg pack at ₹900 saves ₹96.”
+
+### 🔁 Source Data
+
+- Use mock price DB or scraping tools
+- Optionally use `PriceBefore`, `ScrapeHero`, or cached Flipkart/Amazon data
+
+---
+
+## ✅ Feature 5: Weekly Smart Digest
+
+### 🎯 Purpose
+
+Provide a weekly summary of user’s financial activity with actionable insights.
+
+### 🧭 Digest Content
+
+- Total spend
+- Overspent categories
+- Top 3 expenses
+- Missed savings (sum of `gptInsight` deltas)
+- Tip of the week (from GPT)
+
+### 🧠 GPT Prompt Example
+
+```json
+{"prompt": "Summarize this week’s spend pattern and give 1 saving tip."}
+```
+
+### 🕒 Cron Job (Every Sunday 6PM)
+
+- Aggregate user receipts from the past 7 days
+- Summarize and send digest
+
+#### Email Content Example
+
+```
+🧾 Weekly Spend: ₹9,800
+📊 Overspent in: Dining (₹2,300/₹2,000)
+💸 You missed savings worth ₹315
+💡 Tip: Consider preparing meals 2x per week to reduce dining cost.
+```
+
+---
+
+## ✅ Feature 6: Real-Time Purchase Insight
+
+### 🎯 Purpose
+
+Automatically analyze a new receipt post-OCR and provide a smart purchase insight, such as price comparison and better buying suggestions.
+
+### 🧠 GPT Prompt Example
+
+```json
+{"prompt": "Analyze this item: 'Surf Excel Matic 2kg - ₹498', and compare with online prices. Return savings insight if possible."}
+```
+
+### 🧭 User Flow
+
+1. User uploads receipt → OCR extracts items
+2. System sends GPT prompt per item (or batch)
+3. GPT returns insight
+4. UI displays insight below item
+
+#### Conditions:
+
+- Max 100 GPT calls/min → batch items or defer
+-
+  > 20 receipts queued → cron job handles next batch
+
+### 🖼️ UI Description
+
+- Show smart tag below each item
+- Collapse summary for 3+ savings: “You missed ₹135 in savings on this receipt”
+
+### ⚙️ Backend Logic
+
+#### MongoDB Schema Update (Receipt Model)
+
+```js
+items: [
+  {
+    name: String,
+    price: Number,
+    gptInsight: String,
+    category: String,
+    recurring: Boolean
+  }
+]
+```
+
+#### New Service
+
+- `generateInsightsForReceipt(receiptId)`
+- Call GPT for each item
+- Save insight back
+
+### 🕒 Cron Job (Every 4 hours)
+
+- Job: `processPendingReceipts`
+- Find receipts with `items[].gptInsight = null`
+- Retry GPT-based insight generation
+
+### 🔌 Free APIs for Price Comparison
+
+- [PriceBefore](https://www.pricebefore.com/)
+- [WebScrapingAPI](https://www.webscrapingapi.com/)
+- Flipkart/Amazon scraping (static prices)
+
+---
+
+## 📩 Next Steps
+
+- Generate wireframes or flowcharts for each feature
+- Build UI components based on these specs
+- Upload this doc to GPT/Claude for implementation
+
+---
+
