@@ -9,12 +9,6 @@ interface SidebarProps {
 
 const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
   const { logoutMutation } = useAuth();
-
-  const handleClick = (link: { href: string; label: string; icon: string }) => {
-    if (link.label === "Logout") {
-      logoutMutation.mutate();
-    }
-  };
   const [location] = useLocation();
 
   // Navigation links
@@ -230,28 +224,38 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
           <ul className="mt-2 space-y-1">
             {settingsLinks.map((link) => (
               <li key={link.href}>
-                <a
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (link.label === "Logout") {
-                      logoutMutation.mutate();
-                    }
-                  }}
-                  href="#"
-                  className="block"
-                >
-                  <span
-                    className={cn(
-                      "flex items-center px-4 py-2 text-sm rounded-md cursor-pointer",
+                {link.label === "Logout" ? (
+                  <button
+                    onClick={() => logoutMutation.mutate()}
+                    className="w-full text-left"
+                  >
+                    <span
+                      className={cn(
+                        "flex items-center px-4 py-2 text-sm rounded-md cursor-pointer text-gray-700 hover:bg-gray-100",
                       isActiveLink(link.href)
                         ? "bg-blue-50 text-primary font-medium"
                         : "text-gray-700 hover:bg-gray-100"
                     )}
                   >
                     {renderIcon(link.icon)}
-                    {link.label}
-                  </span>
-                </a>
+                      {link.label}
+                    </span>
+                  </button>
+                ) : (
+                  <Link href={link.href}>
+                    <span
+                      className={cn(
+                        "flex items-center px-4 py-2 text-sm rounded-md cursor-pointer",
+                        isActiveLink(link.href)
+                          ? "bg-blue-50 text-primary font-medium"
+                          : "text-gray-700 hover:bg-gray-100"
+                      )}
+                    >
+                      {renderIcon(link.icon)}
+                      {link.label}
+                    </span>
+                  </Link>
+                )}
               </li>
             ))}
           </ul>
