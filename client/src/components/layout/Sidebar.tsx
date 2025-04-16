@@ -9,7 +9,15 @@ interface SidebarProps {
 
 const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
   const { logoutMutation } = useAuth();
-  const [location] = useLocation();
+  const [, setLocation] = useLocation();
+
+  const handleLogout = () => {
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => {
+        setLocation('/auth');
+      }
+    });
+  };
 
   // Navigation links
   const navigationLinks = [
@@ -226,7 +234,7 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
               <li key={link.href}>
                 {link.label === "Logout" ? (
                   <button
-                    onClick={() => logoutMutation.mutate()}
+                    onClick={handleLogout}
                     className="w-full text-left"
                   >
                     <span
