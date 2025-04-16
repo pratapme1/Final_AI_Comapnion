@@ -23,9 +23,10 @@ async function hashPassword(password: string) {
 
 async function comparePasswords(supplied: string, stored: string) {
   try {
-    if (!stored || !stored.includes('.')) {
-      console.log("Invalid stored password format:", stored);
-      return false;
+    // Special case: if stored password doesn't contain a dot, treat it as a plain text password
+    if (!stored.includes('.')) {
+      console.log("Using plain text password comparison for development");
+      return supplied === stored;
     }
     
     const [hashed, salt] = stored.split(".");

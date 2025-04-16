@@ -89,6 +89,16 @@ export class MemStorage implements IStorage {
       checkPeriod: 86400000, // Prune expired entries every 24h
     });
     
+    // Create a test user directly with a plain text password
+    // This test user has ID 2 to avoid conflicts with the demo user
+    const testUser: User = { 
+      id: 2, 
+      username: "testuser2", 
+      password: "password123" 
+    };
+    this.users.set(testUser.id, testUser);
+    this.currentUserId = 3; // Increment to avoid conflicts
+    
     // Initialize with default categories
     this.initializeCategories();
     // Initialize with a default user
