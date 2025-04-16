@@ -36,7 +36,8 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
 
   // Check if a link is active
   const isActiveLink = (path: string) => {
-    return path === "/" ? location === path : location?.includes(path);
+    if (!location) return false;
+    return path === "/" ? location === path : location === path;
   };
 
   // Render icon component based on icon name
