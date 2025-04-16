@@ -200,9 +200,9 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
           {navigationLinks.map((link) => (
             <li key={link.href}>
               <Link href={link.href}>
-                <a
+                <span
                   className={cn(
-                    "flex items-center px-4 py-2 text-sm rounded-md",
+                    "flex items-center px-4 py-2 text-sm rounded-md cursor-pointer",
                     isActiveLink(link.href)
                       ? "bg-blue-50 text-primary font-medium"
                       : "text-gray-700 hover:bg-gray-100"
@@ -210,7 +210,7 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
                 >
                   {renderIcon(link.icon)}
                   {link.label}
-                </a>
+                </span>
               </Link>
             </li>
           ))}
@@ -223,9 +223,9 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
             {settingsLinks.map((link) => (
               <li key={link.href}>
                 <Link href={link.href}>
-                  <a
+                  <span
                     className={cn(
-                      "flex items-center px-4 py-2 text-sm rounded-md",
+                      "flex items-center px-4 py-2 text-sm rounded-md cursor-pointer",
                       isActiveLink(link.href)
                         ? "bg-blue-50 text-primary font-medium"
                         : "text-gray-700 hover:bg-gray-100"
@@ -233,7 +233,7 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
                   >
                     {renderIcon(link.icon)}
                     {link.label}
-                  </a>
+                  </span>
                 </Link>
               </li>
             ))}

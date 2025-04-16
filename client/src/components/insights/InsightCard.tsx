@@ -116,10 +116,10 @@ const InsightCard = ({ insight }: InsightCardProps) => {
               <div>
                 {insight.relatedItemId && (
                   <Link href={`/receipts/${insight.relatedItemId}`}>
-                    <a className={`text-xs font-medium ${styles.text} hover:underline flex items-center`}>
+                    <span className={`text-xs font-medium ${styles.text} hover:underline flex items-center cursor-pointer`}>
                       View transaction
                       <ExternalLink className="ml-1 h-3 w-3" />
-                    </a>
+                    </span>
                   </Link>
                 )}
               </div>

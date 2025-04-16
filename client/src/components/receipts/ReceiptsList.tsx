@@ -135,7 +135,7 @@ const ReceiptsList = ({ searchTerm, sortBy, categoryFilter }: ReceiptsListProps)
           
           return (
             <Link key={receipt.id} href={`/receipts/${receipt.id}`}>
-              <a className="block">
+              <div className="block cursor-pointer">
                 <Card className="hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -189,7 +189,7 @@ const ReceiptsList = ({ searchTerm, sortBy, categoryFilter }: ReceiptsListProps)
                     </div>
                   </CardContent>
                 </Card>
-              </a>
+              </div>
             </Link>
           );
         })
