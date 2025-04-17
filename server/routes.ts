@@ -3,8 +3,25 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import schedule from "node-schedule";
-import { categorizeItems, generateInsight, generateSavingsSuggestion, detectRecurring, generateWeeklyDigest } from "./ai";
+import multer from 'multer';
+import { categorizeItems, generateInsight, generateSavingsSuggestion, detectRecurring, generateWeeklyDigest, processReceiptImage } from "./ai";
 import { setupAuth } from "./auth";
+
+// Configure multer
+const upload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (_req, file, cb) => {
+    const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+    if (validTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  },
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
@@ -164,25 +181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  import multer from 'multer';
-import { processReceiptImage } from "./ai";
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  fileFilter: (_req, file, cb) => {
-    const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
-    if (validTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type'));
-    }
-  },
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  }
-});
-
-app.post("/api/receipts/upload", upload.single('file'), async (req: Request, res: Response) => {
+  app.post("/api/receipts/upload", upload.single('file'), async (req: Request, res: Response) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
