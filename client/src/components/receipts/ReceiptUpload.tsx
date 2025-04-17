@@ -108,6 +108,82 @@ const ReceiptUpload = () => {
   const onSubmit = (data: ReceiptFormValues) => {
     mutation.mutate(data);
   };
+  
+  // Add a batch submission function for multiple receipts
+  const batchMutation = useMutation({
+    mutationFn: async (receipts: any[]) => {
+      setIsSubmittingBatch(true);
+      const results = [];
+      
+      try {
+        for (const receipt of receipts) {
+          // Skip null or invalid entries
+          if (!receipt || !receipt.data) continue;
+          
+          const data = receipt.data;
+          
+          // Format the data for submission
+          const formattedData = {
+            merchantName: data.merchantName || '',
+            date: new Date(data.date || new Date()),
+            total: parseFloat(data.total) || 0,
+            category: data.category || "Others",
+            items: (data.items || []).map((item: any) => ({
+              name: item.name || '',
+              price: parseFloat(item.price) || 0,
+              category: item.category || data.category || "Others"
+            }))
+          };
+          
+          // Submit each receipt
+          const result = await createReceipt(
+            formattedData.merchantName,
+            formattedData.date,
+            formattedData.total,
+            formattedData.items,
+            formattedData.category
+          );
+          
+          results.push(result);
+        }
+        
+        return results;
+      } finally {
+        setIsSubmittingBatch(false);
+      }
+    },
+    onSuccess: () => {
+      toast({
+        title: "Batch upload successful",
+        description: `Successfully saved ${processedReceipts.length} receipts to your account.`,
+      });
+      
+      // Reset the form and clear processed receipts
+      form.reset({
+        merchantName: "",
+        date: new Date().toISOString().split("T")[0],
+        total: "",
+        category: "Others",
+        items: [{ name: "", price: "", category: "Others" }]
+      });
+      
+      // Clear processed receipts and uploaded files
+      setProcessedReceipts([]);
+      setUploadedFiles([]);
+      
+      // Invalidate queries to refresh all data
+      queryClient.invalidateQueries({ queryKey: ['/api/receipts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/insights'] });
+    },
+    onError: () => {
+      toast({
+        title: "Batch upload failed",
+        description: "There was a problem saving some or all of your receipts. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
 
   const addItemField = () => {
     const items = form.getValues("items");
@@ -139,6 +215,15 @@ const ReceiptUpload = () => {
     try {
       const response = await uploadReceiptFile(file);
       setUploadedFiles(prev => [...prev, file.name]);
+      
+      // Store the processed receipt data for batch submission
+      if (response) {
+        setProcessedReceipts(prev => [...prev, {
+          fileName: file.name,
+          data: response
+        }]);
+      }
+      
       return response;
     } catch (error) {
       toast({
@@ -269,7 +354,34 @@ const ReceiptUpload = () => {
           {/* Show successfully processed files */}
           {!isUploading && uploadedFiles.length > 0 && (
             <div className="mt-3 text-sm">
-              <p className="font-medium text-gray-700">Successfully processed:</p>
+              <div className="flex items-center justify-between">
+                <p className="font-medium text-gray-700">Successfully processed:</p>
+                <div className="flex items-center gap-3">
+                  {uploadedFiles.length > 1 && (
+                    <span className="text-sm text-blue-600">
+                      {uploadedFiles.length} receipts ready for submission
+                    </span>
+                  )}
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => {
+                      setUploadedFiles([]);
+                      setProcessedReceipts([]);
+                      form.reset({
+                        merchantName: "",
+                        date: new Date().toISOString().split("T")[0],
+                        total: "",
+                        category: "Others",
+                        items: [{ name: "", price: "", category: "Others" }]
+                      });
+                    }}
+                    className="h-7 px-2"
+                  >
+                    Clear All
+                  </Button>
+                </div>
+              </div>
               <ul className="mt-1 space-y-1">
                 {uploadedFiles.map((fileName, index) => (
                   <li key={index} className="flex items-center gap-2">
@@ -278,6 +390,12 @@ const ReceiptUpload = () => {
                   </li>
                 ))}
               </ul>
+              
+              {uploadedFiles.length > 1 && (
+                <p className="mt-2 text-xs text-gray-500">
+                  The first receipt is loaded in the form below. You can edit it before submitting or use the "Submit All" button to process all receipts at once.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -492,12 +610,26 @@ const ReceiptUpload = () => {
               ))}
             </div>
 
+            {/* Button to submit batch receipts */}
+            {uploadedFiles.length > 1 && (
+              <Button
+                type="button"
+                className="w-full mb-3"
+                variant="secondary"
+                disabled={batchMutation.isPending || isSubmittingBatch || processedReceipts.length === 0}
+                onClick={() => batchMutation.mutate(processedReceipts)}
+              >
+                <FileStack className="mr-2 h-4 w-4" />
+                {batchMutation.isPending ? "Processing..." : `Submit All ${processedReceipts.length} Receipts`}
+              </Button>
+            )}
+            
             <Button
               type="submit"
               className="w-full"
-              disabled={mutation.isPending}
+              disabled={mutation.isPending || batchMutation.isPending}
             >
-              {mutation.isPending ? "Processing..." : "Submit Receipt"}
+              {mutation.isPending ? "Processing..." : "Submit Current Receipt"}
             </Button>
           </form>
         </Form>
