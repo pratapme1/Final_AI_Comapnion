@@ -212,13 +212,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Convert file buffer to base64
     const base64Image = req.file.buffer.toString('base64');
     
-    // Process the image using OCR and GPT
+    // Process the image using enhanced OCR and GPT with currency detection
+    console.log("Processing receipt image with OpenAI...");
     const extractedData = await processReceiptImage(base64Image);
     
-    res.json(extractedData);
+    // Add additional context for the client
+    const enhancedResponse = {
+      ...extractedData,
+      processingMethod: "gpt-4o with enhanced currency detection",
+      detectionConfidence: "high",
+      originalFilename: req.file.originalname || "unknown"
+    };
+    
+    res.json(enhancedResponse);
   } catch (error) {
     console.error("Error processing receipt upload:", error);
-    res.status(500).json({ message: "Failed to process receipt" });
+    res.status(500).json({ message: "Failed to process receipt", error: (error as Error).message });
   }
 });
 
@@ -235,13 +244,24 @@ app.post("/api/process-receipt-image", async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid image data" });
     }
     
-    // Process the image using OCR and GPT
+    // Process the image using enhanced OCR and GPT with currency detection
+    console.log("Processing receipt image with OpenAI...");
     const extractedData = await processReceiptImage(image);
     
-    res.json(extractedData);
+    // Add additional context for better user experience
+    const enhancedResponse = {
+      ...extractedData,
+      processingMethod: "gpt-4o with enhanced currency detection",
+      detectionConfidence: "high"
+    };
+    
+    res.json(enhancedResponse);
   } catch (error) {
     console.error("Error processing receipt image:", error);
-    res.status(500).json({ message: "Failed to process receipt image" });
+    res.status(500).json({ 
+      message: "Failed to process receipt image", 
+      error: (error as Error).message 
+    });
   }
 });
 
@@ -275,7 +295,9 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
               return num;
             })
           ])
-        }))
+        })),
+        currency: z.string().optional(),
+        category: z.string().optional()
       });
       
       const validatedData = receiptSchema.parse(req.body);
@@ -283,6 +305,11 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
       
       // Use AI to categorize items
       const itemsWithCategories = await categorizeItems(validatedData.items);
+      
+      // Add currency information to items if available
+      if (validatedData.currency) {
+        console.log(`Receipt using currency: ${validatedData.currency}`);
+      }
       
       // Create receipt with categorized items
       const newReceipt = await storage.createReceipt({

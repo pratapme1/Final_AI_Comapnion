@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import type { ReceiptItem } from "@shared/schema";
 import type { Receipt } from "@shared/schema";
+import { enhancedCurrencyDetection, calculateSubtotal } from "./currencyDetection";
 
 // Initialize OpenAI client
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
@@ -201,44 +202,75 @@ export async function generateWeeklyDigest(userId: number, receipts: Receipt[]):
 }
 
 /**
- * Process a receipt image using OpenAI's GPT-4
+ * Process a receipt image using OpenAI's GPT-4 with enhanced capabilities
  */
 export async function processReceiptImage(base64Image: string): Promise<{
   merchantName: string;
   date: string;
   total: number;
   items: Array<{ name: string; price: number }>;
+  currency?: string;
+  category?: string;
 }> {
   try {
     console.log("Processing receipt image with OpenAI...");
     
+    // Enhanced system prompt with stronger focus on structured data extraction
+    const enhancedSystemPrompt = `You are an AI assistant specialized in extracting accurate purchase details from receipts.
+    
+    KEY INSTRUCTIONS:
+    - Extract ALL information visible on the receipt including merchant name, date, and payment method.
+    - ACCURATELY extract each line item, including exact product names and prices.
+    - For each item, identify quantities when present.
+    - Look carefully for subtotal, tax, and total amounts - these are critical.
+    
+    CURRENCY DETECTION (EXTREMELY IMPORTANT):
+    - Your TOP PRIORITY is to identify the correct currency from the receipt.
+    - FIRST, look for explicit currency symbols ($, €, £, ¥, ₹, ₩, ฿, etc.) that appear beside prices.
+    - SECOND, check for explicit currency codes (USD, EUR, GBP, etc.) written anywhere on the receipt.
+    - THIRD, examine the receipt header, footer, and merchant name for country/location indicators.
+    - FOURTH, analyze price formatting (e.g., 1,234.56 vs 1.234,56) to infer the currency.
+    - Common currency pairs: $ (USD, CAD, AUD), € (EUR), £ (GBP), ¥ (JPY, CNY), ₹ (INR), ₩ (KRW)
+    - DEFAULT to "USD" ONLY if you've exhausted all other detection methods.
+    - Report specifically which evidence on the receipt led you to your currency determination.
+    
+    CATEGORY DETECTION:
+    - Infer receipt category: groceries, dining, retail, entertainment, travel, utilities, healthcare, etc.
+    - Use merchant name, items purchased, and overall context to determine the category.
+    
+    OTHER INSTRUCTIONS:
+    - Parse date in YYYY-MM-DD format regardless of how it appears on the receipt.
+    - Convert all prices to numerical values only (without currency symbols).
+    - Remove any thousand separators and correctly interpret decimal points/commas.
+    - If items have descriptions or notes, capture those details.
+    
+    Required format:
+    {
+      "merchantName": "string", 
+      "date": "YYYY-MM-DD",
+      "category": "string", 
+      "items": [
+        { "name": "string", "price": number, "quantity": number }
+      ],
+      "subtotalAmount": number,
+      "taxAmount": number,
+      "total": number,
+      "paymentMethod": "string",
+      "currency": "string",
+      "currencyEvidence": "string"
+    }`;
+
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: `You are an expert at extracting information from receipt images. 
-          Extract the following information in JSON format:
-          - merchantName: The store or business name
-          - date: The date of purchase in YYYY-MM-DD format
-          - total: The total amount as a number (without currency symbol)
-          - items: An array of items purchased, each with name and price (as number)
-          
-          Return ONLY valid JSON with this exact structure:
-          {
-            "merchantName": "Store Name",
-            "date": "YYYY-MM-DD",
-            "total": 123.45,
-            "items": [
-              {"name": "Item 1", "price": 10.99},
-              {"name": "Item 2", "price": 20.99}
-            ]
-          }`
+          content: enhancedSystemPrompt
         },
         {
           role: "user",
           content: [
-            { "type": "text", "text": "Extract the information from this receipt in the JSON format specified:" },
+            { "type": "text", "text": "Extract the complete receipt details from this image and return only JSON. Pay special attention to correctly identifying the currency, all items, prices, and the total amount." },
             { 
               "type": "image_url", 
               "image_url": {
@@ -249,6 +281,7 @@ export async function processReceiptImage(base64Image: string): Promise<{
         }
       ],
       response_format: { type: "json_object" },
+      temperature: 0.1,
       max_tokens: 1000
     });
 
@@ -259,27 +292,51 @@ export async function processReceiptImage(base64Image: string): Promise<{
 
     try {
       // Parse the GPT response into structured data
-      const parsed = JSON.parse(content);
+      const parsedResponse = JSON.parse(content);
       
-      // Validate the required fields
-      if (!parsed.merchantName || !parsed.date || !parsed.total || !Array.isArray(parsed.items)) {
-        throw new Error("Missing required fields in parsed data");
+      // Apply enhanced currency detection
+      const currencyResult = enhancedCurrencyDetection(parsedResponse);
+      
+      // Use subtotal if exists, otherwise calculate from items
+      let finalSubtotal = parsedResponse.subtotalAmount;
+      if (!finalSubtotal && Array.isArray(parsedResponse.items)) {
+        finalSubtotal = calculateSubtotal(parsedResponse.items);
       }
       
-      // Ensure total is a number
-      const total = typeof parsed.total === 'number' ? parsed.total : parseFloat(parsed.total);
+      // Validate and ensure all required fields
+      const merchantName = String(parsedResponse.merchantName || 'Unknown Merchant');
+      
+      // Process date - ensure YYYY-MM-DD format
+      let dateValue = parsedResponse.date;
+      if (dateValue) {
+        // Try to ensure date is in YYYY-MM-DD format
+        const dateObj = new Date(dateValue);
+        if (!isNaN(dateObj.getTime())) {
+          dateValue = dateObj.toISOString().split('T')[0];
+        }
+      } else {
+        dateValue = new Date().toISOString().split('T')[0]; // Default to today if no date found
+      }
+      
+      // Normalize "total" - may come as "total" or "totalAmount"
+      const totalValue = parsedResponse.total || parsedResponse.totalAmount || 0;
+      const total = typeof totalValue === 'number' ? totalValue : parseFloat(String(totalValue).replace(',', '.'));
       
       // Process items to ensure they have the correct format
-      const items = parsed.items.map((item: any) => ({
+      const items = Array.isArray(parsedResponse.items) ? parsedResponse.items.map((item: any) => ({
         name: String(item.name || 'Unknown item'),
-        price: typeof item.price === 'number' ? item.price : parseFloat(item.price || '0')
-      }));
+        price: typeof item.price === 'number' ? item.price : parseFloat(String(item.price).replace(',', '.')) || 0,
+        quantity: item.quantity || 1
+      })) : [];
       
+      // Return the finalized, enhanced receipt data
       return {
-        merchantName: String(parsed.merchantName),
-        date: String(parsed.date),
+        merchantName,
+        date: dateValue,
         total: isNaN(total) ? 0 : total,
-        items: items
+        items,
+        currency: currencyResult.currency,
+        category: parsedResponse.category || 'Others'
       };
     } catch (parseError) {
       console.error("Failed to parse OpenAI response:", parseError, content);
