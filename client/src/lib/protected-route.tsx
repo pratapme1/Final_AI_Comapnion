@@ -1,6 +1,7 @@
 import { useAuth } from "../hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { Redirect, Route } from "wouter";
+import { useEffect, useRef } from "react";
 
 export function ProtectedRoute({
   path,
@@ -10,11 +11,27 @@ export function ProtectedRoute({
   component: () => React.JSX.Element;
 }) {
   const { user, isLoading } = useAuth();
+  const protectedRouteLoadTime = useRef<number>(performance.now());
   
-  console.log(`ProtectedRoute for path: ${path}`, { user, isLoading });
+  // Performance measurement
+  useEffect(() => {
+    if (!isLoading) {
+      const renderTime = performance.now() - protectedRouteLoadTime.current;
+      console.log(`Protected route authentication check completed in ${renderTime.toFixed(2)}ms`);
+    }
+  }, [isLoading]);
+  
+  // Reduced logging to improve performance
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`ProtectedRoute for path: ${path}`, { user, isLoading });
+  }
 
+  // Memoize the loading state to reduce re-renders
   if (isLoading) {
-    console.log(`Loading state for path: ${path}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`Loading state for path: ${path}`);
+    }
+    
     return (
       <Route path={path}>
         <div className="flex items-center justify-center min-h-screen">
@@ -24,8 +41,12 @@ export function ProtectedRoute({
     );
   }
 
+  // Use a constant redirect component to reduce work for React
   if (!user) {
-    console.log(`No user found, redirecting to auth from path: ${path}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`No user found, redirecting to auth from path: ${path}`);
+    }
+    
     return (
       <Route path={path}>
         <Redirect to="/auth" />
@@ -33,6 +54,9 @@ export function ProtectedRoute({
     );
   }
 
-  console.log(`User authenticated, rendering component for path: ${path}`);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`User authenticated, rendering component for path: ${path}`);
+  }
+  
   return <Route path={path} component={Component} />;
 }

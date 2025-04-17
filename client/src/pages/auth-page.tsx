@@ -51,6 +51,9 @@ const AuthPage = () => {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const onLogin = (data: LoginFormValues) => {
+    // Performance optimization: Start timestamp to measure login flow
+    const loginStartTime = performance.now();
+    
     // Convert username to lowercase to ensure case insensitivity
     const normalizedData = {
       ...data,
@@ -59,36 +62,51 @@ const AuthPage = () => {
     
     console.log("Attempting login with:", normalizedData);
     
-    // Show a toast for login attempt
+    // Show a toast for login attempt with shorter duration
     toast({
       title: "Signing in",
-      description: "Please wait while we authenticate your credentials...",
+      description: "Please wait while we authenticate...",
       variant: "default",
-      duration: 2000, // Show briefly then automatically dismiss
+      duration: 1500, // Shorter duration to improve perceived performance
     });
+    
+    // Pre-warm data that will be needed after login
+    // This happens in parallel with the login request
+    setTimeout(() => {
+      const prewarmUrls = [
+        '/api/stats/budget-status',
+        '/api/stats/category-spending'
+      ];
+      
+      // Silently prefetch dashboard data
+      prewarmUrls.forEach(url => {
+        fetch(url, { credentials: 'include', method: 'GET' })
+          .catch(() => {}); // Ignore errors, this is just prewarming
+      });
+    }, 100);
     
     loginMutation.mutate(normalizedData, {
       onSuccess: (userData) => {
+        const loginEndTime = performance.now();
+        console.log(`Login flow completed in ${loginEndTime - loginStartTime}ms`);
         console.log("Login successful in form handler:", userData);
         
-        // Display success toast that stays longer
+        // Display success toast that stays visible during transition
         toast({
           title: "Success ✓",
-          description: "Logged in successfully! Redirecting to dashboard...",
+          description: "Logged in successfully! Redirecting...",
           variant: "default",
-          duration: 3000, // Ensure toast is visible before redirect
+          duration: 2000, // Shorter duration for better perceived performance
         });
         
         // Explicitly update the user data in the auth context
         queryClient.setQueryData(["/api/user"], userData);
         
-        // Add a brief delay to ensure toast is visible before redirect
+        // Faster redirection for better perceived performance
         setTimeout(() => {
-          // Trigger a page reload instead of a client-side redirect
-          // This ensures that all state is properly refreshed
-          console.log("Triggering reload to refresh user state...");
+          console.log("Redirecting to dashboard...");
           window.location.href = '/';
-        }, 500); // Short delay to ensure toast is seen
+        }, 300); // Reduced delay for better performance while still showing toast
       },
       onError: (error) => {
         console.error("Login error:", error);
@@ -117,42 +135,60 @@ const AuthPage = () => {
   };
 
   const onRegister = (data: RegisterFormValues) => {
+    // Performance optimization: Start timestamp to measure registration flow
+    const registerStartTime = performance.now();
+    
     // Convert username to lowercase to ensure case insensitivity
     const normalizedData = {
       ...data,
       username: data.username.toLowerCase()
     };
     
-    // Show a toast for registration attempt
+    // Show a toast for registration attempt with shorter duration
     toast({
       title: "Creating Account",
       description: "Setting up your account...",
       variant: "default",
-      duration: 2000, // Show briefly then automatically dismiss
+      duration: 1500, // Shorter duration to improve perceived performance
     });
+    
+    // Pre-warm data that will be needed after registration
+    // This happens in parallel with the registration request
+    setTimeout(() => {
+      const prewarmUrls = [
+        '/api/stats/budget-status',
+        '/api/stats/category-spending'
+      ];
+      
+      // Silently prefetch dashboard data
+      prewarmUrls.forEach(url => {
+        fetch(url, { credentials: 'include', method: 'GET' })
+          .catch(() => {}); // Ignore errors, this is just prewarming
+      });
+    }, 100);
     
     registerMutation.mutate(normalizedData, {
       onSuccess: (userData) => {
+        const registerEndTime = performance.now();
+        console.log(`Registration flow completed in ${registerEndTime - registerStartTime}ms`);
         console.log("Registration successful in form handler:", userData);
         
-        // Display success toast with longer duration
+        // Display success toast that stays visible during transition
         toast({
           title: "Account Created ✓",
-          description: "Your account was created successfully! You are now logged in.",
+          description: "Your account was created successfully! Redirecting...",
           variant: "default",
-          duration: 3000, // Ensure toast is visible before redirect
+          duration: 2000, // Shorter duration for better perceived performance
         });
         
         // Explicitly update the user data in the auth context
         queryClient.setQueryData(["/api/user"], userData);
         
-        // Add a brief delay to ensure toast is visible before redirect
+        // Faster redirection for better perceived performance
         setTimeout(() => {
-          // Trigger a page reload instead of a client-side redirect
-          // This ensures that all state is properly refreshed
-          console.log("Triggering reload to refresh user state after registration...");
+          console.log("Redirecting to dashboard after registration...");
           window.location.href = '/';
-        }, 500); // Short delay to ensure toast is seen
+        }, 300); // Reduced delay for better performance while still showing toast
       },
       onError: (error) => {
         console.error("Registration error:", error);
