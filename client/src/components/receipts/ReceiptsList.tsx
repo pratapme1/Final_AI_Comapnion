@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { Tag, Clock, AlertCircle } from "lucide-react";
+import { Receipt, ReceiptItem } from "@shared/schema";
 
 interface ReceiptsListProps {
   searchTerm: string;
@@ -13,7 +14,7 @@ interface ReceiptsListProps {
 }
 
 const ReceiptsList = ({ searchTerm, sortBy, categoryFilter }: ReceiptsListProps) => {
-  const { data: receipts = [], isLoading } = useQuery<any[]>({
+  const { data: receipts = [], isLoading } = useQuery<Receipt[]>({
     queryKey: ['/api/receipts'],
   });
 
@@ -22,12 +23,12 @@ const ReceiptsList = ({ searchTerm, sortBy, categoryFilter }: ReceiptsListProps)
     if (!receipts) return [];
 
     // Filter by search term
-    let filtered = receipts.filter((receipt: any) => {
+    let filtered = receipts.filter((receipt) => {
       const matchesMerchant = receipt.merchantName
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
 
-      const matchesItem = receipt.items.some((item: any) =>
+      const matchesItem = receipt.items.some((item) =>
         item.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
 
@@ -36,13 +37,13 @@ const ReceiptsList = ({ searchTerm, sortBy, categoryFilter }: ReceiptsListProps)
 
     // Filter by category if not "all"
     if (categoryFilter !== "all") {
-      filtered = filtered.filter((receipt: any) =>
-        receipt.items.some((item: any) => item.category === categoryFilter)
+      filtered = filtered.filter((receipt) =>
+        receipt.items.some((item) => item.category === categoryFilter)
       );
     }
 
     // Sort receipts
-    return filtered.sort((a: any, b: any) => {
+    return filtered.sort((a, b) => {
       switch (sortBy) {
         case "date-desc":
           return new Date(b.date).getTime() - new Date(a.date).getTime();
@@ -61,23 +62,28 @@ const ReceiptsList = ({ searchTerm, sortBy, categoryFilter }: ReceiptsListProps)
   const filteredReceipts = getFilteredReceipts();
 
   // Check if a receipt has insights
-  const hasInsights = (receipt: any) => {
-    return receipt.items.some((item: any) => item.gptInsight);
+  const hasInsights = (receipt: Receipt) => {
+    return receipt.items.some((item) => item.gptInsight);
   };
 
   // Check if a receipt has recurring items
-  const hasRecurringItems = (receipt: any) => {
-    return receipt.items.some((item: any) => item.recurring);
+  const hasRecurringItems = (receipt: Receipt) => {
+    return receipt.items.some((item) => item.recurring);
   };
 
   // Get primary category for a receipt
-  const getPrimaryCategory = (items: any[]) => {
+  const getPrimaryCategory = (items: ReceiptItem[]) => {
     const categories: Record<string, number> = {};
 
     items.forEach((item) => {
       const category = item.category || "Others";
       categories[category] = (categories[category] || 0) + 1;
     });
+
+    // Make sure we handle empty items array
+    if (Object.entries(categories).length === 0) {
+      return "Others";
+    }
 
     return Object.entries(categories)
       .sort((a, b) => b[1] - a[1])[0][0];
@@ -130,7 +136,7 @@ const ReceiptsList = ({ searchTerm, sortBy, categoryFilter }: ReceiptsListProps)
   return (
     <div className="space-y-4">
       {filteredReceipts.length > 0 ? (
-        filteredReceipts.map((receipt: any) => {
+        filteredReceipts.map((receipt) => {
           const primaryCategory = getPrimaryCategory(receipt.items || []);
 
           return (
@@ -175,10 +181,10 @@ const ReceiptsList = ({ searchTerm, sortBy, categoryFilter }: ReceiptsListProps)
 
                       <div className="mt-3 md:mt-0 md:text-right">
                         <div className="text-lg font-semibold text-gray-900">
-                          {formatCurrency(receipt.total)}
+                          {formatCurrency(Number(receipt.total))}
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          {receipt.items.slice(0, 2).map((item: any, i: number) => (
+                          {receipt.items.slice(0, 2).map((item, i) => (
                             <span key={i} className="inline-block mr-1">
                               {item.name}{i < Math.min(2, receipt.items.length) - 1 ? "," : ""} 
                             </span>

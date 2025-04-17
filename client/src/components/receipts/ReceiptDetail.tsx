@@ -4,13 +4,14 @@ import { formatCurrency } from "@/lib/openai";
 import { format } from "date-fns";
 import { Clock, AlertCircle, Lightbulb } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Receipt, ReceiptItem } from "@shared/schema";
 
 interface ReceiptDetailProps {
   id: number;
 }
 
 const ReceiptDetail = ({ id }: ReceiptDetailProps) => {
-  const { data: receipt, isLoading, error } = useQuery({
+  const { data: receipt, isLoading, error } = useQuery<Receipt>({
     queryKey: [`/api/receipts/${id}`],
     enabled: !isNaN(id), // Only fetch if we have a valid ID
   });
@@ -87,10 +88,10 @@ const ReceiptDetail = ({ id }: ReceiptDetailProps) => {
         <div className="flex flex-col md:flex-row justify-between items-start mb-6 border-b pb-4">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">{receipt.merchantName}</h2>
-            <p className="text-gray-500">{formatDate(receipt.date)}</p>
+            <p className="text-gray-500">{formatDate(receipt.date.toString())}</p>
           </div>
           <div className="text-2xl font-bold text-gray-900 mt-2 md:mt-0">
-            {formatCurrency(receipt.total)}
+            {formatCurrency(Number(receipt.total))}
           </div>
         </div>
         
@@ -98,7 +99,7 @@ const ReceiptDetail = ({ id }: ReceiptDetailProps) => {
         <div className="mb-6">
           <h3 className="font-medium text-gray-700 mb-3">Items ({receipt.items.length})</h3>
           <div className="divide-y">
-            {receipt.items.map((item: any, index: number) => (
+            {receipt.items.map((item, index) => (
               <div key={index} className="py-3">
                 <div className="flex justify-between items-start">
                   <div className="flex items-start space-x-2">
@@ -119,7 +120,7 @@ const ReceiptDetail = ({ id }: ReceiptDetailProps) => {
                       )}
                     </div>
                   </div>
-                  <span className="font-medium">{formatCurrency(item.price)}</span>
+                  <span className="font-medium">{formatCurrency(Number(item.price))}</span>
                 </div>
                 
                 {/* Item Insight */}
@@ -140,7 +141,7 @@ const ReceiptDetail = ({ id }: ReceiptDetailProps) => {
         <div className="pt-4 border-t">
           <div className="flex justify-between text-lg font-medium">
             <span>Total</span>
-            <span>{formatCurrency(receipt.total)}</span>
+            <span>{formatCurrency(Number(receipt.total))}</span>
           </div>
         </div>
       </CardContent>
