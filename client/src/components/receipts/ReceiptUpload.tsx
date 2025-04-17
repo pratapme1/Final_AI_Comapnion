@@ -21,12 +21,14 @@ const receiptSchema = z.object({
   total: z.string().refine(val => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
     message: "Total must be a positive number"
   }),
+  category: z.string().optional(),
   items: z.array(
     z.object({
       name: z.string().min(1, "Item name is required"),
       price: z.string().refine(val => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
         message: "Price must be a positive number"
-      })
+      }),
+      category: z.string().optional()
     })
   ).min(1, "At least one item is required")
 });
@@ -44,7 +46,8 @@ const ReceiptUpload = () => {
       merchantName: "",
       date: new Date().toISOString().split("T")[0],
       total: "",
-      items: [{ name: "", price: "" }]
+      category: "Others", // Default category
+      items: [{ name: "", price: "", category: "Others" }]
     }
   });
 
@@ -54,9 +57,11 @@ const ReceiptUpload = () => {
         merchantName: data.merchantName,
         date: new Date(data.date),
         total: parseFloat(data.total),
+        category: data.category || "Others", // Include receipt category
         items: data.items.map(item => ({
           name: item.name,
-          price: parseFloat(item.price)
+          price: parseFloat(item.price),
+          category: item.category || data.category || "Others" // Use item category or receipt category or default
         }))
       };
 
@@ -64,7 +69,8 @@ const ReceiptUpload = () => {
         formattedData.merchantName,
         formattedData.date,
         formattedData.total,
-        formattedData.items
+        formattedData.items,
+        formattedData.category
       );
     },
     onSuccess: () => {

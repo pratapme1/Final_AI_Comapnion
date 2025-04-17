@@ -63,11 +63,17 @@ export async function categorizeItems(items: ReceiptItem[]): Promise<ReceiptItem
       }
     }
 
-    return result;
+    return result.length > 0 ? result : items.map(item => ({
+      ...item,
+      category: item.category || "Others" // Set default category if none was assigned
+    }));
   } catch (error) {
     console.error("Error categorizing items:", error);
     // Return original items with default category
-    return items.map(item => ({ ...item, category: "Others" }));
+    return items.map(item => ({
+      ...item,
+      category: item.category || "Others"
+    }));
   }
 }
 
