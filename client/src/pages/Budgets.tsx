@@ -13,7 +13,7 @@ import { motion } from "framer-motion";
 const Budgets = () => {
   const [showForm, setShowForm] = useState(false);
   const [selectedBudgetId, setSelectedBudgetId] = useState<number | null>(null);
-  const [currentMonth, setCurrentMonth] = useState<string>(
+  const [activeMonth, setActiveMonth] = useState<string>(
     new Date().toISOString().slice(0, 7)
   );
   
@@ -38,7 +38,7 @@ const Budgets = () => {
   useEffect(() => {
     const today = new Date();
     const currentMonthValue = today.toISOString().slice(0, 7);
-    setCurrentMonth(currentMonthValue);
+    setActiveMonth(currentMonthValue);
   }, []);
 
   const toggleForm = () => {
@@ -101,6 +101,12 @@ const Budgets = () => {
     const [year, month] = monthStr.split('-');
     const date = new Date(parseInt(year), parseInt(month) - 1, 1);
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+  
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    console.log("Tab changed to:", value);
+    setActiveMonth(value);
   };
 
   return (
@@ -265,39 +271,38 @@ const Budgets = () => {
         </motion.div>
       )}
 
-      {/* Month Selector Tabs */}
-      <Tabs 
-        value={currentMonth} 
-        onValueChange={setCurrentMonth}
-        className="mb-6"
-        defaultValue={currentMonth}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Monthly Budgets</h2>
-          <TabsList className="bg-blue-50">
-            {monthOptions.map((option) => (
-              <TabsTrigger 
-                key={option.value} 
-                value={option.value}
-                className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
-              >
-                {option.label.split(' ')[0]}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+      {/* Month Selector */}
+      <div className="mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2 md:mb-0">Monthly Budgets</h2>
+          <div className="bg-blue-50 rounded-md">
+            <div className="flex space-x-1 p-1">
+              {monthOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => handleTabChange(option.value)}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                    activeMonth === option.value
+                      ? 'bg-blue-600 text-white'
+                      : 'text-blue-600 hover:bg-blue-100'
+                  }`}
+                >
+                  {option.label.split(' ')[0]}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         
-        <TabsContent value={currentMonth}>
-          <Card className="border-blue-100">
-            <CardContent className="pt-6">
-              <BudgetList 
-                month={currentMonth} 
-                onEditBudget={handleEditBudget}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        <Card className="border-blue-100">
+          <CardContent className="pt-6">
+            <BudgetList 
+              month={activeMonth} 
+              onEditBudget={handleEditBudget}
+            />
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Budget Insights */}
       <Card className="border-blue-100 bg-gradient-to-br from-blue-50 to-white">

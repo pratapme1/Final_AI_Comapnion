@@ -46,15 +46,19 @@ const BudgetList = ({ month, onEditBudget }: BudgetListProps) => {
   const [budgetToDelete, setBudgetToDelete] = useState<number | null>(null);
   const [expandedBudget, setExpandedBudget] = useState<number | null>(null);
 
-  // Fetch budgets for the specified month
-  const { data: budgets = [], isLoading } = useQuery<any[]>({
-    queryKey: ['/api/budgets', { month }],
+  // Fetch all budgets
+  const { data: allBudgets = [], isLoading } = useQuery<any[]>({
+    queryKey: ['/api/budgets'],
   });
 
   // Fetch budget statuses for progress tracking
   const { data: budgetStatuses = [], isLoading: statusesLoading } = useQuery<any[]>({
     queryKey: ['/api/stats/budget-status'],
   });
+  
+  // Log the month parameter and budgets
+  console.log("BudgetList component received month:", month);
+  console.log("All budgets:", allBudgets);
 
   // Handle budget deletion
   const handleDeleteBudget = async () => {
@@ -192,7 +196,9 @@ const BudgetList = ({ month, onEditBudget }: BudgetListProps) => {
     );
   }
 
-  const filteredBudgets = budgets.filter((budget: any) => budget.month === month) || [];
+  // Filter budgets for the selected month
+  const filteredBudgets = allBudgets.filter((budget: any) => budget.month === month) || [];
+  console.log("Filtered budgets for month", month, ":", filteredBudgets);
   const daysLeftInMonth = getDaysLeftInMonth();
   const isCurrentMonth = daysLeftInMonth > 0;
 
