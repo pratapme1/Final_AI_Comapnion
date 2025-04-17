@@ -224,211 +224,160 @@ const AuthPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      {/* Logo and app name at the top for mobile */}
-      <div className="md:hidden w-full flex items-center justify-center pt-8 pb-4">
-        <div className="flex items-center space-x-2">
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
-              <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
-            </svg>
-          </div>
-          <span className="font-bold text-xl text-gray-800">Smart Ledger</span>
-        </div>
-      </div>
-      
-      <div className="flex flex-col md:flex-row max-w-6xl mx-auto">
-        {/* Auth Form */}
-        <div className="w-full md:w-1/2 flex items-center justify-center p-6 md:p-12">
-          <Card className="w-full max-w-md border-0 shadow-lg rounded-xl">
-            <CardHeader className="pb-4">
-              {/* Logo and app name (only visible on desktop) */}
-              <div className="hidden md:flex items-center space-x-2 mb-6">
-                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-white" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
-                    <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
-                  </svg>
-                </div>
-                <span className="font-bold text-2xl text-gray-800">Smart Ledger</span>
-              </div>
-            
-              <CardTitle className="text-2xl md:text-3xl font-bold tracking-tight">
-                {activeTab === "login" ? "Welcome back" : "Create an account"}
-              </CardTitle>
-              <CardDescription className="text-gray-500 text-base">
-                {activeTab === "login" 
-                  ? "Sign in to access your AI-powered financial insights"
-                  : "Join Smart Ledger to start managing your finances smarter"}
-              </CardDescription>
-            </CardHeader>
-            
-            <CardContent className="pb-4">
-              <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="login" className="text-base">Sign In</TabsTrigger>
-                  <TabsTrigger value="register" className="text-base">Register</TabsTrigger>
-                </TabsList>
-
-                {/* Login Form */}
-                <TabsContent value="login">
-                  <Form {...loginForm}>
-                    <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-5">
-                      <FormField
-                        control={loginForm.control}
-                        name="username"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-700">Username</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="Enter your username" 
-                                className="h-11 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20" 
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={loginForm.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-700">Password</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="password" 
-                                placeholder="Enter your password" 
-                                className="h-11 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20" 
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <Button 
-                        type="submit" 
-                        className="w-full h-11 mt-2 text-base font-medium bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
-                        disabled={loginMutation.isPending}
-                      >
-                        {loginMutation.isPending ? (
-                          <div className="flex items-center justify-center">
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Signing In...
-                          </div>
-                        ) : "Sign In"}
-                      </Button>
-                    </form>
-                  </Form>
-                </TabsContent>
-
-                {/* Register Form */}
-                <TabsContent value="register">
-                  <Form {...registerForm}>
-                    <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-5">
-                      <FormField
-                        control={registerForm.control}
-                        name="username"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-700">Username</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="Choose a username" 
-                                className="h-11 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20" 
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={registerForm.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-700">Password</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="password"
-                                placeholder="Choose a password (min. 6 characters)"
-                                className="h-11 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <Button 
-                        type="submit" 
-                        className="w-full h-11 mt-2 text-base font-medium bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
-                        disabled={registerMutation.isPending}
-                      >
-                        {registerMutation.isPending ? (
-                          <div className="flex items-center justify-center">
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Creating Account...
-                          </div>
-                        ) : "Create Account"}
-                      </Button>
-                    </form>
-                  </Form>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-            
-            <CardFooter className="flex justify-center border-t pt-4">
-              <p className="text-sm text-gray-500">
-                {activeTab === "login" ? "Don't have an account? " : "Already have an account? "}
-                <Button
-                  variant="link"
-                  className="p-0 h-auto font-medium text-primary hover:text-primary/80"
-                  onClick={() => setActiveTab(activeTab === "login" ? "register" : "login")}
-                >
-                  {activeTab === "login" ? "Register now" : "Sign in"}
-                </Button>
-              </p>
-            </CardFooter>
-          </Card>
-        </div>
-
-        {/* Hero Section with more visual appeal */}
-        <div className="hidden md:flex w-full md:w-1/2 bg-gradient-to-br from-primary/90 to-primary/70 rounded-l-3xl overflow-hidden">
-          <div className="relative w-full h-full flex items-center justify-center p-12">
-            {/* Decorative circles for visual interest */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4"></div>
-            <div className="absolute bottom-0 left-0 w-80 h-80 bg-white/5 rounded-full translate-y-1/3 -translate-x-1/4"></div>
-            
-            <div className="relative z-10 max-w-md text-white">
-              <div className="flex items-center mb-8">
-                <div className="h-16 w-16 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center mr-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
-                    <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
-                  </svg>
-                </div>
-                <h2 className="text-2xl font-bold">Smart Ledger</h2>
-              </div>
-            
-              <div className="mb-8"></div>
-              
-              <p className="text-white/80 font-medium border-l-4 border-white/30 pl-4">
-                Smart Ledger helps you track, analyze, and optimize your finances.
-              </p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-white p-6">
+      <Card className="w-full max-w-md border-0 shadow-lg rounded-xl">
+        <CardHeader className="pb-4">
+          <div className="flex items-center space-x-2 mb-6 justify-center">
+            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-white" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z" />
+                <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z" />
+              </svg>
             </div>
+            <span className="font-bold text-2xl text-gray-800">Smart Ledger</span>
           </div>
-        </div>
-      </div>
+          
+          <CardTitle className="text-2xl md:text-3xl font-bold tracking-tight text-center">
+            {activeTab === "login" ? "Welcome back" : "Create an account"}
+          </CardTitle>
+        </CardHeader>
+        
+        <CardContent className="pb-4">
+          <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="login" className="text-base">Sign In</TabsTrigger>
+              <TabsTrigger value="register" className="text-base">Register</TabsTrigger>
+            </TabsList>
+
+            {/* Login Form */}
+            <TabsContent value="login">
+              <Form {...loginForm}>
+                <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-5">
+                  <FormField
+                    control={loginForm.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Username</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your username" 
+                            className="h-11 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={loginForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Password</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="password" 
+                            placeholder="Enter your password" 
+                            className="h-11 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button 
+                    type="submit" 
+                    className="w-full h-11 mt-2 text-base font-medium bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
+                    disabled={loginMutation.isPending}
+                  >
+                    {loginMutation.isPending ? (
+                      <div className="flex items-center justify-center">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Signing In...
+                      </div>
+                    ) : "Sign In"}
+                  </Button>
+                </form>
+              </Form>
+            </TabsContent>
+
+            {/* Register Form */}
+            <TabsContent value="register">
+              <Form {...registerForm}>
+                <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-5">
+                  <FormField
+                    control={registerForm.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Username</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Choose a username" 
+                            className="h-11 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={registerForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Password</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder="Choose a password (min. 6 characters)"
+                            className="h-11 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button 
+                    type="submit" 
+                    className="w-full h-11 mt-2 text-base font-medium bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
+                    disabled={registerMutation.isPending}
+                  >
+                    {registerMutation.isPending ? (
+                      <div className="flex items-center justify-center">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating Account...
+                      </div>
+                    ) : "Create Account"}
+                  </Button>
+                </form>
+              </Form>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+        
+        <CardFooter className="flex justify-center border-t pt-4">
+          <p className="text-sm text-gray-500">
+            {activeTab === "login" ? "Don't have an account? " : "Already have an account? "}
+            <Button
+              variant="link"
+              className="p-0 h-auto font-medium text-primary hover:text-primary/80"
+              onClick={() => setActiveTab(activeTab === "login" ? "register" : "login")}
+            >
+              {activeTab === "login" ? "Register now" : "Sign in"}
+            </Button>
+          </p>
+        </CardFooter>
+      </Card>
     </div>
   );
 };
