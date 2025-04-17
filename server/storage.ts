@@ -33,7 +33,7 @@ export interface IStorage {
   getBudgetsByMonth(userId: number, month: string): Promise<Budget[]>;
   getBudget(userId: number, category: string, month: string): Promise<Budget | undefined>;
   createBudget(budget: InsertBudget): Promise<Budget>;
-  updateBudget(id: number, limit: number): Promise<Budget | undefined>;
+  updateBudget(id: number, limit: string): Promise<Budget | undefined>;
   deleteBudget(id: number): Promise<boolean>;
   
   // Receipt methods
@@ -137,11 +137,11 @@ export class MemStorage implements IStorage {
     
     // Initial budgets
     const sampleBudgets = [
-      { userId, category: "Groceries", limit: 8000, month: currentMonth },
-      { userId, category: "Dining", limit: 4000, month: currentMonth },
-      { userId, category: "Utilities", limit: 5000, month: currentMonth },
-      { userId, category: "Transportation", limit: 4000, month: currentMonth },
-      { userId, category: "Entertainment", limit: 3000, month: currentMonth }
+      { userId, category: "Groceries", limit: "8000", month: currentMonth },
+      { userId, category: "Dining", limit: "4000", month: currentMonth },
+      { userId, category: "Utilities", limit: "5000", month: currentMonth },
+      { userId, category: "Transportation", limit: "4000", month: currentMonth },
+      { userId, category: "Entertainment", limit: "3000", month: currentMonth }
     ];
     
     sampleBudgets.forEach((budget) => {
@@ -212,7 +212,7 @@ export class MemStorage implements IStorage {
     return budget;
   }
   
-  async updateBudget(id: number, limit: number): Promise<Budget | undefined> {
+  async updateBudget(id: number, limit: string): Promise<Budget | undefined> {
     const budget = this.budgets.get(id);
     if (!budget) return undefined;
     
@@ -553,10 +553,10 @@ export class DatabaseStorage implements IStorage {
     return createdBudget;
   }
 
-  async updateBudget(id: number, limit: number): Promise<Budget | undefined> {
+  async updateBudget(id: number, limit: string): Promise<Budget | undefined> {
     const [updatedBudget] = await db
       .update(budgets)
-      .set({ limit: limit.toString() })
+      .set({ limit })
       .where(eq(budgets.id, id))
       .returning();
     return updatedBudget;
