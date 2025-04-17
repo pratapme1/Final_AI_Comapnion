@@ -30,10 +30,7 @@ const StatCards = () => {
   
   const { data: stats, isLoading, error, refetch } = useQuery<Stats>({
     queryKey: ['/api/stats'],
-    retry: 2,
-    onSuccess: (data) => {
-      console.log("Stats loaded successfully:", data);
-    }
+    retry: 2
   });
 
   // Update local state when stats data is received

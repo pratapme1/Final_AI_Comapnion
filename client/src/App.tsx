@@ -15,6 +15,7 @@ import { BudgetProvider } from "./hooks/use-budget-data";
 import { ReceiptProvider } from "./hooks/use-receipt-data";
 import { ProtectedRoute } from "./lib/protected-route";
 import { Loader2 } from "lucide-react";
+import { queryClient } from "./lib/queryClient";
 
 // Performance splash component
 function SplashScreen() {
@@ -36,11 +37,41 @@ function Router() {
   // Get current location path
   const [location] = useLocation();
   
-  // Auto-collapse sidebar on mobile when location changes
+  // Auto-collapse sidebar and refresh data on navigation changes
   useEffect(() => {
     // Close the sidebar on mobile when the route changes
     setIsSidebarOpen(false);
     console.log("Route changed, sidebar collapsed on mobile:", location);
+    
+    // Manually invalidate and refetch important data queries when route changes
+    // This ensures fresh data for each page without relying only on component mount
+    const refreshData = async () => {
+      try {
+        // Use a timeout to avoid blocking the UI
+        setTimeout(() => {
+          // List of queries to refresh on route change
+          const queriesToRefresh = [
+            ['/api/stats'],
+            ['/api/receipts'],
+            ['/api/budgets'],
+            ['/api/stats/budget-status'],
+            ['/api/stats/category-spending'],
+            ['/api/insights'],
+          ];
+          
+          // Invalidate and refetch all queries
+          queriesToRefresh.forEach(queryKey => {
+            queryClient.invalidateQueries({ queryKey });
+          });
+          
+          console.log("Data refreshed after navigation");
+        }, 10);
+      } catch (error) {
+        console.error("Error refreshing data:", error);
+      }
+    };
+    
+    refreshData();
   }, [location]);
   
   // Check if current page is auth page

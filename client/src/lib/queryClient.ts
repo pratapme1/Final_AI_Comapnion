@@ -83,18 +83,18 @@ export const getQueryFn: <T>(options: {
     }
   };
 
-// Configure the query client with performance optimizations
+// Configure the query client with optimizations for automatic data refresh
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: 60000, // Increase stale time to 1 minute to reduce refetches
+      refetchOnWindowFocus: true,      // Enable refetch when window gains focus
+      staleTime: 1000,                 // Set data as stale after 1 second
       retry: false,
-      // Add these for better caching behavior
-      gcTime: 300000, // Cache data for 5 minutes (formerly cacheTime in v4)
-      refetchOnMount: false,
+      gcTime: 300000,                  // Cache data for 5 minutes
+      refetchOnMount: true,            // Refetch when component mounts
+      refetchOnReconnect: true,        // Refetch when network reconnects
     },
     mutations: {
       retry: false,
