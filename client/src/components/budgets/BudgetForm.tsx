@@ -161,15 +161,22 @@ const BudgetForm = ({ budgetId, onComplete }: BudgetFormProps) => {
         data.month
       );
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Budget created successfully",
         description: "Your budget has been created and is now active.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/budgets'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/stats/budget-status'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
-      onComplete();
+      
+      // Force data refetch with stronger cache invalidation
+      await queryClient.invalidateQueries({ queryKey: ['/api/budgets'], refetchType: 'all' });
+      await queryClient.invalidateQueries({ queryKey: ['/api/stats/budget-status'], refetchType: 'all' });
+      await queryClient.invalidateQueries({ queryKey: ['/api/stats'], refetchType: 'all' });
+      
+      // Force a direct refetch
+      await queryClient.refetchQueries({ queryKey: ['/api/budgets'], type: 'all' });
+      
+      // Wait a moment to ensure state updates are processed
+      setTimeout(() => onComplete(), 300);
     },
     onError: (error) => {
       console.error("Error creating budget:", error);
@@ -187,15 +194,22 @@ const BudgetForm = ({ budgetId, onComplete }: BudgetFormProps) => {
       if (!budgetId) throw new Error("Budget ID is required for updates");
       return updateBudget(budgetId, parseFloat(data.limit));
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Budget updated successfully",
         description: "Your budget has been updated with the new amount.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/budgets'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/stats/budget-status'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
-      onComplete();
+      
+      // Force data refetch with stronger cache invalidation
+      await queryClient.invalidateQueries({ queryKey: ['/api/budgets'], refetchType: 'all' });
+      await queryClient.invalidateQueries({ queryKey: ['/api/stats/budget-status'], refetchType: 'all' });
+      await queryClient.invalidateQueries({ queryKey: ['/api/stats'], refetchType: 'all' });
+      
+      // Force a direct refetch
+      await queryClient.refetchQueries({ queryKey: ['/api/budgets'], type: 'all' });
+      
+      // Wait a moment to ensure state updates are processed
+      setTimeout(() => onComplete(), 300);
     },
     onError: (error) => {
       console.error("Error updating budget:", error);

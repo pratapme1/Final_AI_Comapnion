@@ -25,7 +25,9 @@ import {
   CheckCircle, 
   DollarSign, 
   Percent, 
-  PiggyBank 
+  PiggyBank,
+  Calendar,
+  Clock
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
@@ -46,17 +48,25 @@ const BudgetList = ({ month, onEditBudget }: BudgetListProps) => {
   const [budgetToDelete, setBudgetToDelete] = useState<number | null>(null);
   const [expandedBudget, setExpandedBudget] = useState<number | null>(null);
 
-  // Fetch all budgets
+  // Fetch all budgets with strong refetch and stale time settings
   const { data: allBudgets = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/budgets'],
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: 2000, // Refetch every 2 seconds while component is mounted
+    staleTime: 1000, // Consider data stale after 1 second
   });
 
   // Fetch budget statuses for progress tracking
   const { data: budgetStatuses = [], isLoading: statusesLoading } = useQuery<any[]>({
     queryKey: ['/api/stats/budget-status'],
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchInterval: 2000,
+    staleTime: 1000,
   });
   
-  // Log the month parameter and budgets
+  // Log the month parameter and budgets for debugging
   console.log("BudgetList component received month:", month);
   console.log("All budgets:", allBudgets);
 
@@ -72,10 +82,13 @@ const BudgetList = ({ month, onEditBudget }: BudgetListProps) => {
         description: "The budget has been deleted successfully.",
       });
       
-      // Invalidate all related queries
-      queryClient.invalidateQueries({ queryKey: ['/api/budgets'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/stats/budget-status'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+      // Invalidate all related queries with stronger cache invalidation
+      await queryClient.invalidateQueries({ queryKey: ['/api/budgets'], refetchType: 'all' });
+      await queryClient.invalidateQueries({ queryKey: ['/api/stats/budget-status'], refetchType: 'all' });
+      await queryClient.invalidateQueries({ queryKey: ['/api/stats'], refetchType: 'all' });
+      
+      // Force direct refetch
+      await queryClient.refetchQueries({ queryKey: ['/api/budgets'], type: 'all' });
       
       setBudgetToDelete(null);
       

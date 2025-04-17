@@ -17,21 +17,37 @@ const Budgets = () => {
     new Date().toISOString().slice(0, 7)
   );
   
-  // Fetch budget and spending data
+  // Fetch budget and spending data with improved refetch settings
   const { data: budgets = [] } = useQuery<any[]>({
     queryKey: ['/api/budgets'],
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    staleTime: 0, // Always consider data stale right away
+    refetchInterval: 2000, // Poll every 2 seconds
   });
   
   const { data: budgetStatuses = [] } = useQuery<any[]>({
     queryKey: ['/api/stats/budget-status'],
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+    refetchInterval: 2000,
   });
   
   const { data: spendingData = [] } = useQuery<any[]>({
     queryKey: ['/api/stats/category-spending'],
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+    refetchInterval: 2000,
   });
   
   const { data: stats = {} } = useQuery<any>({
     queryKey: ['/api/stats'],
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+    refetchInterval: 2000,
   });
 
   // Set default tab to current month
