@@ -44,7 +44,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Budgets endpoints
   app.get("/api/budgets", async (req: Request, res: Response) => {
     try {
-      const userId = 1; // Using default user for demo
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const userId = req.user.id;
       const month = req.query.month as string || new Date().toISOString().slice(0, 7);
       
       const budgets = await storage.getBudgetsByMonth(userId, month);
@@ -56,6 +60,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/budgets", async (req: Request, res: Response) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
       const budgetSchema = z.object({
         category: z.string(),
         limit: z.number().positive(),
@@ -63,7 +71,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const validatedData = budgetSchema.parse(req.body);
-      const userId = 1; // Using default user for demo
+      const userId = req.user.id;
       
       // Check if budget already exists for this category and month
       const existingBudget = await storage.getBudget(userId, validatedData.category, validatedData.month);
@@ -133,7 +141,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Receipts endpoints
   app.get("/api/receipts", async (req: Request, res: Response) => {
     try {
-      const userId = 1; // Using default user for demo
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const userId = req.user.id;
       
       // Optional date range filters
       let startDate: Date | undefined;
