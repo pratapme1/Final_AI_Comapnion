@@ -1,6 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface SidebarProps {
   isMobileOpen: boolean;
@@ -11,11 +13,45 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
   const { logoutMutation } = useAuth();
   const [location, setLocation] = useLocation();
 
+  // Use the imported useToast hook
+  const { toast } = useToast();
+  
   const handleLogout = () => {
+    // Show a logout attempt toast
+    toast({
+      title: "Logging out",
+      description: "Please wait...",
+      variant: "default",
+      duration: 2000, // Show briefly
+    });
+    
     logoutMutation.mutate(undefined, {
       onSuccess: () => {
+        // Show a successful logout toast
+        toast({
+          title: "Logged out successfully",
+          description: "You have been securely logged out",
+          variant: "default",
+          duration: 3000,
+        });
+        
+        // Clear all cached data
         queryClient.clear();
-        setLocation('/auth');
+        
+        // Short delay to ensure toast is visible, then redirect
+        setTimeout(() => {
+          // Use window.location for more reliable redirect after logout
+          window.location.href = '/auth';
+        }, 500);
+      },
+      onError: (error) => {
+        // Show error toast if logout fails
+        toast({
+          title: "Logout failed",
+          description: "Please try again",
+          variant: "destructive",
+        });
+        console.error("Logout error:", error);
       }
     });
   };
