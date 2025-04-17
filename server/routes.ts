@@ -254,10 +254,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log("Processing receipt image with OpenAI...");
     const extractedData = await processReceiptImage(base64Image);
     
+    let suggestedCategory = extractedData.category || "Others";
+    
+    // If items are available, try to categorize based on them
+    if (extractedData.items && extractedData.items.length > 0) {
+      // Get categories for individual items
+      const categorizedItems = await categorizeItems(extractedData.items);
+      extractedData.items = categorizedItems;
+      
+      // Determine the most frequent category among items
+      const categoryCounts: Record<string, number> = {};
+      categorizedItems.forEach(item => {
+        if (item.category && item.category !== "Others") {
+          categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
+        }
+      });
+      
+      // Find the most common category (excluding "Others")
+      let maxCount = 0;
+      Object.entries(categoryCounts).forEach(([category, count]) => {
+        if (count > maxCount) {
+          maxCount = count;
+          suggestedCategory = category;
+        }
+      });
+    }
+    
     // Add additional context for the client
     const enhancedResponse = {
       ...extractedData,
-      processingMethod: "gpt-4o with enhanced currency detection",
+      items: extractedData.items,
+      category: suggestedCategory, // Add suggested category for the receipt
+      processingMethod: "gpt-4o with enhanced categorization",
       detectionConfidence: "high",
       originalFilename: req.file.originalname || "unknown"
     };

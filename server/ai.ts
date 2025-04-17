@@ -29,12 +29,20 @@ export async function categorizeItems(items: ReceiptItem[]): Promise<ReceiptItem
 
       // Create prompt for batch with enhanced instructions
       const prompt = `
-        Categorize each item into one of these categories: ${categories.join(", ")}.
-        Only use "Others" as a last resort - try to assign the most specific category possible.
-        Consider the context of each item. For example:
-        - "Milk", "Bread", "Vegetables" would be "Groceries"
-        - "Restaurant", "Cafe", "Pizza" would be "Dining"
-        - "Gas", "Taxi", "Bus ticket" would be "Transportation"
+        Categorize each receipt item into EXACTLY ONE of these categories: ${categories.join(", ")}.
+        Be extremely precise with categorization. Only use "Others" as an absolute last resort.
+        
+        Detailed categorization guide:
+        - Groceries: Food items, household supplies, pantry staples, ingredients, supermarket purchases
+        - Dining: Restaurants, cafes, takeout, food delivery, bars, coffee shops
+        - Utilities: Electricity, water, gas, internet, phone bills, subscriptions
+        - Transportation: Gas, car maintenance, public transit, taxis, rideshares, parking
+        - Entertainment: Movies, streaming services, concerts, events, hobbies, games
+        - Shopping: Clothing, electronics, general merchandise, online shopping
+        - Health: Medical services, pharmacy items, health insurance, wellness products
+        - Travel: Hotels, flights, vacation expenses, travel bookings, tourism
+        - Personal Care: Haircuts, cosmetics, grooming products, spa services
+        - Others: Only if truly cannot fit into any category above
         
         Return the answer as a JSON array with each item having a "name", "price", and "category" property.
         For example: [{"name": "Apple", "price": 1.99, "category": "Groceries"}]
@@ -274,9 +282,12 @@ export async function processReceiptImage(base64Image: string): Promise<{
     - DEFAULT to "USD" ONLY if you've exhausted all other detection methods.
     - Report specifically which evidence on the receipt led you to your currency determination.
     
-    CATEGORY DETECTION:
-    - Infer receipt category: groceries, dining, retail, entertainment, travel, utilities, healthcare, etc.
-    - Use merchant name, items purchased, and overall context to determine the category.
+    CATEGORY DETECTION (EXTREMELY IMPORTANT):
+    - Your SECONDARY PRIORITY (after currency detection) is determining the correct expense category for the receipt.
+    - Categorize the receipt into ONE of these specific categories only: "Groceries", "Dining", "Utilities", "Transportation", "Entertainment", "Shopping", "Health", "Travel", "Personal Care", "Others"
+    - Use merchant name, items purchased, and overall context to determine the most accurate category.
+    - Only use "Others" as a last resort if no other category clearly applies.
+    - Examples: Supermarket → Groceries, Restaurant → Dining, Gas station → Transportation, Pharmacy → Health
     
     OTHER INSTRUCTIONS:
     - Parse date in YYYY-MM-DD format regardless of how it appears on the receipt.
@@ -370,13 +381,39 @@ export async function processReceiptImage(base64Image: string): Promise<{
       })) : [];
       
       // Return the finalized, enhanced receipt data
+      // Determine the most appropriate category based on merchant name and items
+      let detectedCategory = parsedResponse.category || 'Others';
+      
+      // First try using merchant name to categorize if no category provided
+      if (!parsedResponse.category || parsedResponse.category === 'Others') {
+        const merchantNameLower = merchantName.toLowerCase();
+        
+        // Simple merchant name based categorization rules
+        if (merchantNameLower.includes('market') || merchantNameLower.includes('grocery') || 
+            merchantNameLower.includes('super') || merchantNameLower.includes('food')) {
+          detectedCategory = 'Groceries';
+        } else if (merchantNameLower.includes('restaurant') || merchantNameLower.includes('cafe') || 
+                  merchantNameLower.includes('bar') || merchantNameLower.includes('coffee')) {
+          detectedCategory = 'Dining';
+        } else if (merchantNameLower.includes('gas') || merchantNameLower.includes('transport') || 
+                  merchantNameLower.includes('taxi') || merchantNameLower.includes('uber')) {
+          detectedCategory = 'Transportation';
+        } else if (merchantNameLower.includes('pharmacy') || merchantNameLower.includes('doctor') || 
+                  merchantNameLower.includes('hospital') || merchantNameLower.includes('med')) {
+          detectedCategory = 'Health';
+        } else if (merchantNameLower.includes('mall') || merchantNameLower.includes('shop') || 
+                  merchantNameLower.includes('store') || merchantNameLower.includes('mart')) {
+          detectedCategory = 'Shopping';
+        }
+      }
+      
       return {
         merchantName,
         date: dateValue,
         total: isNaN(total) ? 0 : total,
         items,
         currency: currencyResult.currency,
-        category: parsedResponse.category || 'Others'
+        category: detectedCategory
       };
     } catch (parseError) {
       console.error("Failed to parse OpenAI response:", parseError, content);
