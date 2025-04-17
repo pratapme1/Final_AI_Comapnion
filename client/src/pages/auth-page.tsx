@@ -12,6 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "../lib/queryClient";
 
 // Create form schemas
 const loginSchema = z.object({
@@ -58,13 +59,24 @@ const AuthPage = () => {
     
     console.log("Attempting login with:", normalizedData);
     loginMutation.mutate(normalizedData, {
-      onSuccess: () => {
+      onSuccess: (userData) => {
+        console.log("Login successful in form handler:", userData);
+        
+        // Display success toast
         toast({
           title: "Success",
           description: "Logged in successfully",
           variant: "default",
         });
-        setLocation('/');
+        
+        // Explicitly update the user data in the auth context
+        queryClient.setQueryData(["/api/user"], userData);
+        
+        // Wait a brief moment to allow state updates, then redirect
+        setTimeout(() => {
+          console.log("Redirecting to dashboard...");
+          setLocation('/');
+        }, 100);
       },
       onError: (error) => {
         console.error("Login error:", error);
@@ -85,13 +97,24 @@ const AuthPage = () => {
     };
     
     registerMutation.mutate(normalizedData, {
-      onSuccess: () => {
+      onSuccess: (userData) => {
+        console.log("Registration successful in form handler:", userData);
+        
+        // Display success toast
         toast({
           title: "Success",
           description: "Account created successfully! You are now logged in.",
           variant: "default",
         });
-        setLocation('/');
+        
+        // Explicitly update the user data in the auth context
+        queryClient.setQueryData(["/api/user"], userData);
+        
+        // Wait a brief moment to allow state updates, then redirect
+        setTimeout(() => {
+          console.log("Redirecting to dashboard after registration...");
+          setLocation('/');
+        }, 100);
       },
       onError: (error) => {
         console.error("Registration error:", error);
