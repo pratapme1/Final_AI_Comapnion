@@ -58,7 +58,7 @@ export interface IStorage {
   getMonthlySpending(userId: number, months: number): Promise<MonthlySpending[]>;
 
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: any;
 }
 
 export class MemStorage implements IStorage {
@@ -74,7 +74,7 @@ export class MemStorage implements IStorage {
   private currentReceiptId: number;
   private currentInsightId: number;
   
-  public sessionStore: session.SessionStore;
+  public sessionStore: any; // Session store
   
   constructor() {
     this.users = new Map();
@@ -91,7 +91,7 @@ export class MemStorage implements IStorage {
     
     // Initialize session store
     this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000, // Prune expired entries every 24h
+      checkPeriod: 86400000 // Prune expired entries every 24h
     });
     
     // Create a test user directly with a plain text password
@@ -877,5 +877,5 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Use Database Storage instead of Memory Storage
-export const storage = new DatabaseStorage();
+// Use Memory Storage for development to avoid database issues
+export const storage = new MemStorage();
