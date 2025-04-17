@@ -48,6 +48,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Login successful, updating user data:", user);
       queryClient.setQueryData(["/api/user"], user);
       
+      // Show success toast
+      toast({
+        title: "Success",
+        description: "Logged in successfully!",
+        variant: "default",
+      });
+      
       // Force a refetch of the user data to ensure everything is in sync
       queryClient.invalidateQueries({
         queryKey: ["/api/user"]
@@ -80,6 +87,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Registration successful, updating user data:", user);
       queryClient.setQueryData(["/api/user"], user);
       
+      // Show success toast
+      toast({
+        title: "Success",
+        description: "Account created successfully! You are now logged in.",
+        variant: "default",
+      });
+      
       // Force a refetch of the user data to ensure everything is in sync
       queryClient.invalidateQueries({
         queryKey: ["/api/user"]
@@ -109,6 +123,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: () => {
       console.log("Logout mutation completed, clearing user data");
       queryClient.setQueryData(["/api/user"], null);
+      
+      // Show logout toast
+      toast({
+        title: "Success", 
+        description: "You have been logged out.",
+        variant: "default",
+      });
+      
       // Invalidate any cached user data to ensure clean state
       queryClient.invalidateQueries({
         queryKey: ["/api/user"]
