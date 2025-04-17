@@ -40,12 +40,13 @@ export async function uploadReceiptFile(file: File) {
   return response.json();
 }
 
-export async function createReceipt(merchantName: string, date: Date, total: number, items: any[]) {
+export async function createReceipt(merchantName: string, date: Date, total: number, items: any[], category?: string) {
   return apiRequest("POST", "/api/receipts", { 
     merchantName, 
     date: date.toISOString(), 
     total, 
-    items 
+    items,
+    category
   });
 }
 

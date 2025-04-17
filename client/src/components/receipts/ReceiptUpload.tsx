@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createReceipt, uploadReceiptFile } from "@/lib/openai";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
@@ -83,7 +84,8 @@ const ReceiptUpload = () => {
         merchantName: "",
         date: new Date().toISOString().split("T")[0],
         total: "",
-        items: [{ name: "", price: "" }]
+        category: "Others", // Default category
+        items: [{ name: "", price: "", category: "Others" }]
       });
 
       queryClient.invalidateQueries({ queryKey: ['/api/receipts'] });
@@ -105,7 +107,8 @@ const ReceiptUpload = () => {
 
   const addItemField = () => {
     const items = form.getValues("items");
-    form.setValue("items", [...items, { name: "", price: "" }]);
+    const receiptCategory = form.getValues("category") || "Others";
+    form.setValue("items", [...items, { name: "", price: "", category: receiptCategory }]);
   };
 
   const removeItemField = (index: number) => {
@@ -140,16 +143,21 @@ const ReceiptUpload = () => {
 
       // Pre-fill form with extracted data
       if (response) {
-        // Ensure items have string values for the form
-        const formattedItems = response.items?.map((item: {name: string, price: number}) => ({
+        // Get the GPT-detected category if available or use default
+        const detectedCategory = response.category || "Others";
+        
+        // Ensure items have string values for the form and include categories
+        const formattedItems = response.items?.map((item: {name: string, price: number, category?: string}) => ({
           name: item.name || '',
-          price: (item.price !== undefined) ? item.price.toString() : ''
-        })) || [{ name: "", price: "" }];
+          price: (item.price !== undefined) ? item.price.toString() : '',
+          category: item.category || detectedCategory // Use item's category or receipt category
+        })) || [{ name: "", price: "", category: detectedCategory }];
         
         form.reset({
           merchantName: response.merchantName || '',
           date: response.date?.split('T')[0] || new Date().toISOString().split("T")[0],
           total: response.total?.toString() || '',
+          category: detectedCategory,
           items: formattedItems
         });
       }
@@ -239,19 +247,53 @@ const ReceiptUpload = () => {
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="total"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Total Amount (₹)</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.01" min="0" placeholder="0.00" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="total"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Total Amount (₹)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" min="0" placeholder="0.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Groceries">Groceries</SelectItem>
+                        <SelectItem value="Dining">Dining</SelectItem>
+                        <SelectItem value="Utilities">Utilities</SelectItem>
+                        <SelectItem value="Transportation">Transportation</SelectItem>
+                        <SelectItem value="Entertainment">Entertainment</SelectItem>
+                        <SelectItem value="Shopping">Shopping</SelectItem>
+                        <SelectItem value="Health">Health</SelectItem>
+                        <SelectItem value="Travel">Travel</SelectItem>
+                        <SelectItem value="Personal Care">Personal Care</SelectItem>
+                        <SelectItem value="Others">Others</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
