@@ -370,7 +370,22 @@ export async function processReceiptImage(base64Image: string): Promise<{
       }
       
       // Normalize "total" - may come as "total" or "totalAmount"
-      const totalValue = parsedResponse.total || parsedResponse.totalAmount || 0;
+      // If no total is found, calculate it from items
+      let totalValue = parsedResponse.total || parsedResponse.totalAmount;
+      if (!totalValue && Array.isArray(parsedResponse.items)) {
+        console.log("Total not found in receipt, calculating from items...");
+        totalValue = calculateSubtotal(parsedResponse.items);
+        
+        // Add tax if available
+        if (parsedResponse.taxAmount && typeof parsedResponse.taxAmount === 'number') {
+          totalValue += parsedResponse.taxAmount;
+        }
+      }
+      
+      // Default to 0 if still no total available
+      totalValue = totalValue || 0;
+      
+      // Convert to number if it's a string
       const total = typeof totalValue === 'number' ? totalValue : parseFloat(String(totalValue).replace(',', '.'));
       
       // Process items to ensure they have the correct format

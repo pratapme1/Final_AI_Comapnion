@@ -40,6 +40,8 @@ const ReceiptUpload = () => {
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedData, setUploadedData] = useState<any>(null);
+  const [pendingUploads, setPendingUploads] = useState<File[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
   const form = useForm<ReceiptFormValues>({
     resolver: zodResolver(receiptSchema),
@@ -121,59 +123,94 @@ const ReceiptUpload = () => {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processFile = async (file: File) => {
     const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
     if (!validTypes.includes(file.type)) {
       toast({
         title: "Invalid file type",
-        description: "Please upload a PDF, PNG, or JPG file.",
+        description: `${file.name} skipped - Please upload only PDF, PNG, or JPG files.`,
         variant: "destructive"
       });
-      return;
+      return null;
     }
-
-    setIsUploading(true);
 
     try {
       const response = await uploadReceiptFile(file);
-      setUploadedData(response);
-
-      // Pre-fill form with extracted data
-      if (response) {
-        // Get the GPT-detected category if available or use default
-        const detectedCategory = response.category || "Others";
-        
-        // Ensure items have string values for the form and include categories
-        const formattedItems = response.items?.map((item: {name: string, price: number, category?: string}) => ({
-          name: item.name || '',
-          price: (item.price !== undefined) ? item.price.toString() : '',
-          category: item.category || detectedCategory // Use item's category or receipt category
-        })) || [{ name: "", price: "", category: detectedCategory }];
-        
-        form.reset({
-          merchantName: response.merchantName || '',
-          date: response.date?.split('T')[0] || new Date().toISOString().split("T")[0],
-          total: response.total?.toString() || '',
-          category: detectedCategory,
-          items: formattedItems
-        });
-      }
-
-      toast({
-        title: "Receipt uploaded successfully",
-        description: "The receipt data has been extracted and pre-filled.",
-      });
+      setUploadedFiles(prev => [...prev, file.name]);
+      return response;
     } catch (error) {
       toast({
         title: "Error processing receipt",
-        description: "There was a problem processing your receipt. Please enter details manually.",
+        description: `Failed to process ${file.name}. Please try again or enter details manually.`,
+        variant: "destructive"
+      });
+      return null;
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    setPendingUploads(Array.from(files));
+
+    try {
+      // Process first file to populate the form
+      if (files.length > 0) {
+        const firstFile = files[0];
+        const response = await processFile(firstFile);
+        setUploadedData(response);
+
+        // Pre-fill form with extracted data from the first file
+        if (response) {
+          // Get the GPT-detected category if available or use default
+          const detectedCategory = response.category || "Others";
+          
+          // Ensure items have string values for the form and include categories
+          const formattedItems = response.items?.map((item: {name: string, price: number, category?: string}) => ({
+            name: item.name || '',
+            price: (item.price !== undefined) ? item.price.toString() : '',
+            category: item.category || detectedCategory // Use item's category or receipt category
+          })) || [{ name: "", price: "", category: detectedCategory }];
+          
+          form.reset({
+            merchantName: response.merchantName || '',
+            date: response.date?.split('T')[0] || new Date().toISOString().split("T")[0],
+            total: response.total?.toString() || '',
+            category: detectedCategory,
+            items: formattedItems
+          });
+        }
+
+        // Process additional files in the background if there are multiple
+        if (files.length > 1) {
+          toast({
+            title: "Processing multiple receipts",
+            description: `Processing ${files.length} receipts. First receipt data has been loaded in the form.`,
+          });
+          
+          // Process remaining files in background (could store them for batch upload later)
+          for (let i = 1; i < files.length; i++) {
+            await processFile(files[i]);
+          }
+        }
+      }
+
+      toast({
+        title: "Receipt upload complete",
+        description: `Successfully processed ${files.length} receipt(s).`,
+      });
+    } catch (error) {
+      console.error("Error processing receipts:", error);
+      toast({
+        title: "Error processing receipts",
+        description: "There was a problem processing your receipts. Some files may not have been processed.",
         variant: "destructive"
       });
     } finally {
       setIsUploading(false);
+      setPendingUploads([]);
       e.target.value = '';
     }
   };
@@ -190,7 +227,7 @@ const ReceiptUpload = () => {
 
         <div className="mb-6">
           <Label htmlFor="receipt-upload" className="block mb-2">
-            Upload Receipt File (PDF, PNG, or JPG)
+            Upload Receipt Files (PDF, PNG, or JPG)
           </Label>
           <div className="flex gap-4 items-center">
             <Input
@@ -200,6 +237,7 @@ const ReceiptUpload = () => {
               onChange={handleFileUpload}
               disabled={isUploading || mutation.isPending}
               className="flex-1"
+              multiple // Allow multiple file selection
             />
             <Button
               variant="outline"
@@ -210,8 +248,35 @@ const ReceiptUpload = () => {
               <Upload className="h-4 w-4" />
             </Button>
           </div>
+
+          {/* Show processing status */}
           {isUploading && (
-            <p className="text-sm text-gray-500 mt-2">Processing receipt...</p>
+            <div className="mt-3 text-sm">
+              <p className="font-medium text-gray-700">Processing {pendingUploads.length} receipt(s)...</p>
+              <ul className="mt-1 space-y-1">
+                {pendingUploads.map((file, index) => (
+                  <li key={index} className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>
+                    <span className="text-gray-600">{file.name}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Show successfully processed files */}
+          {!isUploading && uploadedFiles.length > 0 && (
+            <div className="mt-3 text-sm">
+              <p className="font-medium text-gray-700">Successfully processed:</p>
+              <ul className="mt-1 space-y-1">
+                {uploadedFiles.map((fileName, index) => (
+                  <li key={index} className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span className="text-gray-600">{fileName}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
 

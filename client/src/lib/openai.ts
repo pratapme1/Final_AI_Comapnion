@@ -25,6 +25,8 @@ export async function uploadReceiptFile(file: File) {
   const formData = new FormData();
   formData.append('file', file);
   
+  console.log(`Processing file: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
+  
   // Use standard fetch for FormData uploads
   const response = await fetch('/api/receipts/upload', {
     method: 'POST',
@@ -37,7 +39,17 @@ export async function uploadReceiptFile(file: File) {
     throw new Error(errorData.message || `Error: ${response.status}`);
   }
   
-  return response.json();
+  const data = await response.json();
+  
+  // Add additional logging
+  console.log(`Receipt processing results for ${file.name}:`, {
+    merchantName: data.merchantName,
+    itemCount: data.items?.length || 0,
+    totalDetected: data.total !== undefined,
+    categoryDetected: data.category !== undefined
+  });
+  
+  return data;
 }
 
 export async function createReceipt(merchantName: string, date: Date, total: number, items: any[], category?: string) {
