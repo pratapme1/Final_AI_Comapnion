@@ -253,11 +253,28 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
       
       const receiptSchema = z.object({
         merchantName: z.string(),
-        date: z.string().transform(str => new Date(str)),
-        total: z.number().positive(),
+        date: z.union([
+          z.string().transform(str => new Date(str)),
+          z.date()
+        ]),
+        total: z.union([
+          z.number().positive(),
+          z.string().transform(str => {
+            const num = parseFloat(str);
+            if (isNaN(num) || num <= 0) throw new Error('Total must be a positive number');
+            return num;
+          })
+        ]),
         items: z.array(z.object({
           name: z.string(),
-          price: z.number().positive()
+          price: z.union([
+            z.number().positive(),
+            z.string().transform(str => {
+              const num = parseFloat(str);
+              if (isNaN(num) || num <= 0) throw new Error('Price must be a positive number');
+              return num;
+            })
+          ])
         }))
       });
       

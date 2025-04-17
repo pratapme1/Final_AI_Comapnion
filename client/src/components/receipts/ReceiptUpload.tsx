@@ -134,11 +134,17 @@ const ReceiptUpload = () => {
 
       // Pre-fill form with extracted data
       if (response) {
+        // Ensure items have string values for the form
+        const formattedItems = response.items?.map(item => ({
+          name: item.name || '',
+          price: item.price?.toString() || ''
+        })) || [{ name: "", price: "" }];
+        
         form.reset({
           merchantName: response.merchantName || '',
           date: response.date?.split('T')[0] || new Date().toISOString().split("T")[0],
           total: response.total?.toString() || '',
-          items: response.items || [{ name: "", price: "" }]
+          items: formattedItems
         });
       }
 
