@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { PlusCircle, X, Upload, Save, FileStack } from "lucide-react";
+import { useReceiptData } from "@/hooks/use-receipt-data";
 
 const receiptSchema = z.object({
   merchantName: z.string().min(1, "Merchant name is required"),
@@ -78,7 +79,7 @@ const ReceiptUpload = () => {
         formattedData.category
       );
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Receipt saved successfully",
         description: "Your receipt has been processed and insights are being generated.",
@@ -92,9 +93,16 @@ const ReceiptUpload = () => {
         items: [{ name: "", price: "", category: "Others" }]
       });
 
-      queryClient.invalidateQueries({ queryKey: ['/api/receipts'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/insights'] });
+      // Use the centralized invalidation method from context for consistent refresh
+      await invalidateData();
+      
+      // Force direct data refetch for immediate UI updates
+      await queryClient.refetchQueries({ queryKey: ['/api/receipts'], type: 'all' });
+      await queryClient.refetchQueries({ queryKey: ['/api/stats'], type: 'all' });
+      await queryClient.refetchQueries({ queryKey: ['/api/stats/budget-status'], type: 'all' });
+      await queryClient.refetchQueries({ queryKey: ['/api/stats/category-spending'], type: 'all' });
+      await queryClient.refetchQueries({ queryKey: ['/api/stats/monthly-spending'], type: 'all' });
+      await queryClient.refetchQueries({ queryKey: ['/api/insights'], type: 'all' });
     },
     onError: () => {
       toast({
@@ -105,10 +113,13 @@ const ReceiptUpload = () => {
     }
   });
 
+  // Use the receipt data context for data refresh
+  const { invalidateData } = useReceiptData();
+  
   const onSubmit = (data: ReceiptFormValues) => {
     mutation.mutate(data);
   };
-  
+
   // Add a batch submission function for multiple receipts
   const batchMutation = useMutation({
     mutationFn: async (receipts: any[]) => {
@@ -152,7 +163,7 @@ const ReceiptUpload = () => {
         setIsSubmittingBatch(false);
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Batch upload successful",
         description: `Successfully saved ${processedReceipts.length} receipts to your account.`,
@@ -171,10 +182,16 @@ const ReceiptUpload = () => {
       setProcessedReceipts([]);
       setUploadedFiles([]);
       
-      // Invalidate queries to refresh all data
-      queryClient.invalidateQueries({ queryKey: ['/api/receipts'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/insights'] });
+      // Use the centralized invalidation method from context
+      await invalidateData();
+      
+      // Force direct data refetch for immediate UI updates
+      await queryClient.refetchQueries({ queryKey: ['/api/receipts'], type: 'all' });
+      await queryClient.refetchQueries({ queryKey: ['/api/stats'], type: 'all' });
+      await queryClient.refetchQueries({ queryKey: ['/api/stats/budget-status'], type: 'all' });
+      await queryClient.refetchQueries({ queryKey: ['/api/stats/category-spending'], type: 'all' });
+      await queryClient.refetchQueries({ queryKey: ['/api/stats/monthly-spending'], type: 'all' });
+      await queryClient.refetchQueries({ queryKey: ['/api/insights'], type: 'all' });
     },
     onError: () => {
       toast({

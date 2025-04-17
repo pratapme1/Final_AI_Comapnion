@@ -133,16 +133,11 @@ function Router() {
 function App() {
   return (
     <AuthProvider>
-      {/* 
-      TODO: Implement these providers after finishing their implementation
       <BudgetProvider>
         <ReceiptProvider>
-      */}
-        <Router />
-      {/*
+          <Router />
         </ReceiptProvider>
       </BudgetProvider>
-      */}
     </AuthProvider>
   );
 }
