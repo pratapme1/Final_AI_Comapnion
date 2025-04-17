@@ -70,11 +70,11 @@ const Receipts = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {categories?.map((category: any) => (
+                  {Array.isArray(categories) ? categories.map((category: any) => (
                     <SelectItem key={category.id} value={category.name}>
                       {category.name}
                     </SelectItem>
-                  ))}
+                  )) : null}
                 </SelectContent>
               </Select>
             </div>
