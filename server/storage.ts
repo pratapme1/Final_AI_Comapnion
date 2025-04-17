@@ -333,19 +333,38 @@ export class MemStorage implements IStorage {
     const receipts = await this.getReceiptsByDateRange(userId, startOfMonth, endOfMonth);
     const budgets = await this.getBudgetsByMonth(userId, currentMonth);
     
+    // Debug log the receipts we're calculating totals from
+    console.log(`Calculating stats for user ${userId}, found ${receipts.length} receipts for current month`);
+    if (receipts.length > 0) {
+      console.log('Receipt totals:', receipts.map(r => ({
+        id: r.id,
+        merchantName: r.merchantName,
+        total: r.total,
+        totalType: typeof r.total,
+        itemsCount: r.items?.length || 0
+      })));
+    }
+    
     // Calculate total spend from receipts - properly handle invalid totals
     let totalSpend = 0;
     for (const receipt of receipts) {
       // First try to use the receipt total
       const receiptTotal = parseFloat(receipt.total);
       if (!isNaN(receiptTotal)) {
+        console.log(`Adding receipt total: ${receiptTotal} from ${receipt.merchantName}`);
         totalSpend += receiptTotal;
       } else if (receipt.items && receipt.items.length > 0) {
         // If total is not valid, calculate from items
-        const itemsTotal = receipt.items.reduce((sum, item) => sum + (item.price || 0), 0);
+        const itemsTotal = receipt.items.reduce((sum, item) => {
+          const itemPrice = typeof item.price === 'number' ? item.price : 0;
+          return sum + itemPrice;
+        }, 0);
+        console.log(`Adding calculated items total: ${itemsTotal} from ${receipt.merchantName}`);
         totalSpend += itemsTotal;
       }
     }
+    
+    console.log(`Final total spend calculated: ${totalSpend}`);
     
     // Calculate budget total and remaining
     const budgetTotal = budgets.reduce((sum, budget) => sum + Number(budget.limit), 0);
@@ -359,7 +378,10 @@ export class MemStorage implements IStorage {
     const recurringItems = receipts.flatMap(receipt => 
       receipt.items.filter(item => item.recurring)
     );
-    const recurringTotal = recurringItems.reduce((sum, item) => sum + (item.price || 0), 0);
+    const recurringTotal = recurringItems.reduce((sum, item) => {
+      const itemPrice = typeof item.price === 'number' ? item.price : 0;
+      return sum + itemPrice;
+    }, 0);
     
     // Count unique subscriptions by name
     const subscriptionNames = new Set(
@@ -374,15 +396,20 @@ export class MemStorage implements IStorage {
     // Calculate spending trend (dummy value for demo)
     const spendingTrend = 12.5;
     
-    return {
-      totalSpend,
-      budgetRemaining,
-      potentialSavings,
+    // Create final stats object with proper numerical values
+    const result = {
+      totalSpend: Number(totalSpend.toFixed(2)),
+      budgetRemaining: Number(budgetRemaining.toFixed(2)),
+      potentialSavings: Number(potentialSavings.toFixed(2)),
       suggestionsCount: savingsInsights.length,
-      recurringExpenses: recurringTotal,
+      recurringExpenses: Number(recurringTotal.toFixed(2)),
       subscriptionsCount: subscriptionNames.size,
-      spendingTrend
+      spendingTrend: Number(spendingTrend.toFixed(2))
     };
+    
+    console.log(`Returning stats for user ${userId}:`, result);
+    
+    return result;
   }
   
   async getBudgetStatuses(userId: number): Promise<BudgetStatus[]> {

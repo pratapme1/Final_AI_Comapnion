@@ -69,7 +69,19 @@ export async function markInsightAsRead(insightId: number) {
 
 // Helper function to format currency
 export function formatCurrency(amount: number): string {
-  return `₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+  console.log("Formatting currency amount:", amount, "type:", typeof amount);
+  
+  // Handle NaN, undefined, or null values gracefully
+  if (amount === undefined || amount === null || isNaN(amount)) {
+    console.warn("Invalid amount for currency formatting:", amount);
+    return "₹0";
+  }
+  
+  // Ensure amount is a number
+  const numericAmount = Number(amount);
+  
+  // Format with Indian Rupee symbol and locale
+  return `₹${numericAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 }
 
 // Helper function to determine budget status color

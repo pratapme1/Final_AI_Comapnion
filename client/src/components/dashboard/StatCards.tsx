@@ -1,11 +1,24 @@
 import { formatCurrency } from "@/lib/openai";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect } from "react";
 
 const StatCards = () => {
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading, error } = useQuery({
     queryKey: ['/api/stats'],
   });
+
+  // Debug log to see actual data received from the API
+  useEffect(() => {
+    if (stats) {
+      console.log("Stats data received:", stats);
+      console.log("Total spend value:", stats.totalSpend);
+      console.log("Total spend type:", typeof stats.totalSpend);
+    }
+    if (error) {
+      console.error("Error fetching stats:", error);
+    }
+  }, [stats, error]);
 
   if (isLoading) {
     return (
