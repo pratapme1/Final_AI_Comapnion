@@ -26,11 +26,11 @@ const ReceiptsList = ({ searchTerm, sortBy, categoryFilter }: ReceiptsListProps)
       const matchesMerchant = receipt.merchantName
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
-      
+
       const matchesItem = receipt.items.some((item: any) =>
         item.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      
+
       return matchesMerchant || matchesItem;
     });
 
@@ -73,16 +73,16 @@ const ReceiptsList = ({ searchTerm, sortBy, categoryFilter }: ReceiptsListProps)
   // Get primary category for a receipt
   const getPrimaryCategory = (items: any[]) => {
     const categories: Record<string, number> = {};
-    
+
     items.forEach((item) => {
       const category = item.category || "Others";
       categories[category] = (categories[category] || 0) + 1;
     });
-    
+
     return Object.entries(categories)
       .sort((a, b) => b[1] - a[1])[0][0];
   };
-  
+
   // Get category badge color
   const getCategoryColor = (category: string) => {
     switch(category?.toLowerCase()) {
@@ -132,9 +132,9 @@ const ReceiptsList = ({ searchTerm, sortBy, categoryFilter }: ReceiptsListProps)
       {filteredReceipts.length > 0 ? (
         filteredReceipts.map((receipt: any) => {
           const primaryCategory = getPrimaryCategory(receipt.items || []);
-          
+
           return (
-            <Link key={receipt.id} href={`/receipts/${receipt.id}`}>
+            <Link key={receipt.id} to={`/receipts/${receipt.id}`}>
               <div className="block cursor-pointer">
                 <Card className="hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
@@ -150,19 +150,19 @@ const ReceiptsList = ({ searchTerm, sortBy, categoryFilter }: ReceiptsListProps)
                           <p className="text-sm text-gray-500">
                             {format(new Date(receipt.date), "PPP")} • {receipt.items.length} items
                           </p>
-                          
+
                           <div className="flex flex-wrap mt-2 gap-2">
                             <span className={`px-2 py-1 text-xs font-medium rounded-full ${getCategoryColor(primaryCategory)}`}>
                               {primaryCategory}
                             </span>
-                            
+
                             {hasInsights(receipt) && (
                               <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 flex items-center">
                                 <AlertCircle className="h-3 w-3 mr-1" />
                                 Insights
                               </span>
                             )}
-                            
+
                             {hasRecurringItems(receipt) && (
                               <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 flex items-center">
                                 <Clock className="h-3 w-3 mr-1" />
@@ -172,7 +172,7 @@ const ReceiptsList = ({ searchTerm, sortBy, categoryFilter }: ReceiptsListProps)
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="mt-3 md:mt-0 md:text-right">
                         <div className="text-lg font-semibold text-gray-900">
                           {formatCurrency(receipt.total)}

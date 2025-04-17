@@ -100,7 +100,7 @@ const Receipts = () => {
         </Route>
         <Route path="/receipts/upload" exact>
           <div className="mb-6">
-            <Link href="/receipts">
+            <Link to="/receipts">
               <Button variant="outline" className="mb-4">
                 ← Back to Receipts
               </Button>
@@ -113,7 +113,7 @@ const Receipts = () => {
           {(params) => (
             <>
               <div className="mb-6">
-                <Link href="/receipts">
+                <Link to="/receipts">
                   <Button variant="outline" className="mb-4">
                     ← Back to Receipts
                   </Button>
