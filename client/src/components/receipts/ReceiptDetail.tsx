@@ -10,8 +10,9 @@ interface ReceiptDetailProps {
 }
 
 const ReceiptDetail = ({ id }: ReceiptDetailProps) => {
-  const { data: receipt, isLoading } = useQuery({
+  const { data: receipt, isLoading, error } = useQuery({
     queryKey: [`/api/receipts/${id}`],
+    enabled: !isNaN(id), // Only fetch if we have a valid ID
   });
 
   if (isLoading) {

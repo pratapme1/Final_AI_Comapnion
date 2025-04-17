@@ -58,5 +58,12 @@ export function ProtectedRoute({
     console.log(`User authenticated, rendering component for path: ${path}`);
   }
   
+  // If the path ends with /* or similar pattern, we're handling a wildcard route
+  if (path.includes('*')) {
+    // For wildcard routes, we need to render the component directly
+    return <Route path={path}>{() => <Component />}</Route>;
+  }
+  
+  // For normal routes, use the standard component pattern
   return <Route path={path} component={Component} />;
 }
