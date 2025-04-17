@@ -1,19 +1,48 @@
 import { formatCurrency } from "@/lib/openai";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { QueryClient } from "@tanstack/react-query";
+
+// Define the Stats type interface for better type checking
+interface Stats {
+  totalSpend: number;
+  budgetRemaining: number;
+  potentialSavings: number;
+  suggestionsCount: number;
+  recurringExpenses: number;
+  subscriptionsCount: number;
+  spendingTrend: number;
+}
 
 const StatCards = () => {
-  const { data: stats, isLoading, error } = useQuery({
+  const { toast } = useToast();
+  const [statsData, setStatsData] = useState<Stats>({
+    totalSpend: 0,
+    budgetRemaining: 0,
+    potentialSavings: 0,
+    suggestionsCount: 0,
+    recurringExpenses: 0,
+    subscriptionsCount: 0,
+    spendingTrend: 0
+  });
+  
+  const { data: stats, isLoading, error, refetch } = useQuery<Stats>({
     queryKey: ['/api/stats'],
+    retry: 2,
+    onSuccess: (data) => {
+      console.log("Stats loaded successfully:", data);
+    }
   });
 
-  // Debug log to see actual data received from the API
+  // Update local state when stats data is received
   useEffect(() => {
     if (stats) {
       console.log("Stats data received:", stats);
       console.log("Total spend value:", stats.totalSpend);
       console.log("Total spend type:", typeof stats.totalSpend);
+      setStatsData(stats);
     }
     if (error) {
       console.error("Error fetching stats:", error);
@@ -44,14 +73,14 @@ const StatCards = () => {
               Total Spending (This Month)
             </dt>
             <dd className="mt-1 text-3xl font-semibold text-gray-900">
-              {formatCurrency(stats?.totalSpend || 0)}
+              {formatCurrency(statsData.totalSpend)}
             </dd>
             <dd className="mt-2 flex items-center text-sm">
               <span className="text-danger font-medium flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
-                {stats?.spendingTrend || 0}%
+                {statsData.spendingTrend}%
               </span>
               <span className="text-gray-500 ml-2">vs last month</span>
             </dd>
@@ -67,16 +96,16 @@ const StatCards = () => {
               Budget Remaining
             </dt>
             <dd className="mt-1 text-3xl font-semibold text-gray-900">
-              {formatCurrency(stats?.budgetRemaining || 0)}
+              {formatCurrency(statsData.budgetRemaining)}
             </dd>
             <dd className="mt-2 flex items-center text-sm">
               <span className="text-warning font-medium">
-                {stats?.totalSpend && stats?.budgetRemaining 
-                  ? `${Math.round((stats.totalSpend / (stats.totalSpend + stats.budgetRemaining)) * 100)}% used` 
+                {statsData.totalSpend && statsData.budgetRemaining 
+                  ? `${Math.round((statsData.totalSpend / (statsData.totalSpend + statsData.budgetRemaining)) * 100)}% used` 
                   : '0% used'}
               </span>
               <span className="text-gray-500 ml-2">
-                of {formatCurrency((stats?.totalSpend || 0) + (stats?.budgetRemaining || 0))}
+                of {formatCurrency(statsData.totalSpend + statsData.budgetRemaining)}
               </span>
             </dd>
           </dl>
@@ -91,14 +120,14 @@ const StatCards = () => {
               Potential Savings
             </dt>
             <dd className="mt-1 text-3xl font-semibold text-secondary">
-              {formatCurrency(stats?.potentialSavings || 0)}
+              {formatCurrency(statsData.potentialSavings)}
             </dd>
             <dd className="mt-2 flex items-center text-sm">
               <span className="text-secondary font-medium flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                 </svg>
-                {stats?.suggestionsCount || 0} suggestions
+                {statsData.suggestionsCount} suggestions
               </span>
             </dd>
           </dl>
@@ -113,11 +142,11 @@ const StatCards = () => {
               Recurring Expenses
             </dt>
             <dd className="mt-1 text-3xl font-semibold text-gray-900">
-              {formatCurrency(stats?.recurringExpenses || 0)}
+              {formatCurrency(statsData.recurringExpenses)}
             </dd>
             <dd className="mt-2 flex items-center text-sm">
               <span className="text-gray-500">
-                {stats?.subscriptionsCount || 0} subscriptions
+                {statsData.subscriptionsCount} subscriptions
               </span>
             </dd>
           </dl>
