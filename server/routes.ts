@@ -201,6 +201,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/receipts/upload", upload.single('file'), async (req: Request, res: Response) => {
   try {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+    
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
@@ -213,7 +217,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     res.json(extractedData);
   } catch (error) {
+    console.error("Error processing receipt upload:", error);
     res.status(500).json({ message: "Failed to process receipt" });
+  }
+});
+
+// Endpoint for processing receipt image from base64 string
+app.post("/api/process-receipt-image", async (req: Request, res: Response) => {
+  try {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+    
+    const { image } = req.body;
+    
+    if (!image || typeof image !== 'string') {
+      return res.status(400).json({ message: "Invalid image data" });
+    }
+    
+    // Process the image using OCR and GPT
+    const extractedData = await processReceiptImage(image);
+    
+    res.json(extractedData);
+  } catch (error) {
+    console.error("Error processing receipt image:", error);
+    res.status(500).json({ message: "Failed to process receipt image" });
   }
 });
 

@@ -98,14 +98,24 @@ export function getInsightTypeInfo(type: string): { color: string, bgColor: stri
   }
 }
 
-// Placeholder for OCR function (not implemented - would use a dedicated service)
+// Function to process a receipt image using the backend API
 export async function processReceiptImage(base64Image: string): Promise<{
   merchantName: string;
   date: Date;
   total: number;
   items: Array<{ name: string; price: number }>;
 }> {
-  // In a real implementation, this would call an OCR service API
-  // For now, return an error that directs users to manually enter data
-  throw new Error("Receipt scanning is not available. Please enter receipt details manually.");
+  try {
+    const response = await apiRequest("POST", "/api/process-receipt-image", { image: base64Image });
+    
+    // Convert string date to Date object
+    if (response.date && typeof response.date === 'string') {
+      response.date = new Date(response.date);
+    }
+    
+    return response;
+  } catch (error) {
+    console.error("Error processing receipt image:", error);
+    throw new Error("Failed to process receipt image. Please try again or enter details manually.");
+  }
 }
