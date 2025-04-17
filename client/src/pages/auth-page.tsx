@@ -65,18 +65,17 @@ const AuthPage = () => {
         // Display success toast
         toast({
           title: "Success",
-          description: "Logged in successfully",
+          description: "Logged in successfully!",
           variant: "default",
         });
         
         // Explicitly update the user data in the auth context
         queryClient.setQueryData(["/api/user"], userData);
         
-        // Wait a brief moment to allow state updates, then redirect
-        setTimeout(() => {
-          console.log("Redirecting to dashboard...");
-          setLocation('/');
-        }, 100);
+        // Trigger a page reload instead of a client-side redirect
+        // This ensures that all state is properly refreshed
+        console.log("Triggering reload to refresh user state...");
+        window.location.href = '/';
       },
       onError: (error) => {
         console.error("Login error:", error);
@@ -110,11 +109,10 @@ const AuthPage = () => {
         // Explicitly update the user data in the auth context
         queryClient.setQueryData(["/api/user"], userData);
         
-        // Wait a brief moment to allow state updates, then redirect
-        setTimeout(() => {
-          console.log("Redirecting to dashboard after registration...");
-          setLocation('/');
-        }, 100);
+        // Trigger a page reload instead of a client-side redirect
+        // This ensures that all state is properly refreshed
+        console.log("Triggering reload to refresh user state after registration...");
+        window.location.href = '/';
       },
       onError: (error) => {
         console.error("Registration error:", error);
