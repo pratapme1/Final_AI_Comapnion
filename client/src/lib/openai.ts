@@ -117,7 +117,8 @@ export async function processReceiptImage(base64Image: string): Promise<{
   merchantName: string;
   date: Date;
   total: number;
-  items: Array<{ name: string; price: number }>;
+  category: string;
+  items: Array<{ name: string; price: number; category?: string }>;
 }> {
   try {
     const response = await apiRequest("POST", "/api/process-receipt-image", { image: base64Image });

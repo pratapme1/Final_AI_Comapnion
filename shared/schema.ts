@@ -65,6 +65,7 @@ export const receipts = pgTable("receipts", {
   date: timestamp("date").notNull(),
   total: text("total").notNull(), // Using text for numeric to avoid type issues
   items: json("items").notNull().$type<ReceiptItem[]>(),
+  category: text("category").default("Others"), // Add category field with default
 });
 
 export const receiptsRelations = relations(receipts, ({ one }) => ({
@@ -80,6 +81,7 @@ export const insertReceiptSchema = createInsertSchema(receipts).pick({
   date: true,
   total: true,
   items: true,
+  category: true,
 });
 
 // Receipt Item type
