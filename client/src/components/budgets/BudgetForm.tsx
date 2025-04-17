@@ -70,10 +70,11 @@ type BudgetFormValues = z.infer<typeof budgetFormSchema>;
 
 interface BudgetFormProps {
   budgetId?: number | null;
+  defaultMonth?: string;
   onComplete: () => void;
 }
 
-const BudgetForm = ({ budgetId, onComplete }: BudgetFormProps) => {
+const BudgetForm = ({ budgetId, defaultMonth, onComplete }: BudgetFormProps) => {
   const { toast } = useToast();
   const [isEditMode, setIsEditMode] = useState(!!budgetId);
   const [sliderValue, setSliderValue] = useState<number>(5000);
@@ -105,12 +106,16 @@ const BudgetForm = ({ budgetId, onComplete }: BudgetFormProps) => {
   const currentYear = today.getFullYear();
   const currentMonthString = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}`;
   
+  // Use defaultMonth from props if provided, otherwise use currentMonthString
+  const initialMonth = defaultMonth || currentMonthString;
+  console.log(`BudgetForm initializing with month: ${initialMonth} (default: ${defaultMonth}, current: ${currentMonthString})`);
+  
   const form = useForm<BudgetFormValues>({
     resolver: zodResolver(budgetFormSchema),
     defaultValues: {
       category: "",
       limit: "5000",
-      month: currentMonthString, // Use our explicitly formatted current month
+      month: initialMonth,
     },
   });
 
@@ -240,14 +245,17 @@ const BudgetForm = ({ budgetId, onComplete }: BudgetFormProps) => {
   const getMonthOptions = () => {
     const options = [];
     const today = new Date();
-    // We're setting the actual current date, not 2025
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
     
-    // Show current month and next 6 months from the actual current date
+    console.log(`Generating month options with current date: ${today.toISOString()}`);
+    console.log(`Current month: ${currentMonth}, current year: ${currentYear}`);
+    
+    // Show only current month and future months to prevent creating budgets for past months
     for (let i = 0; i <= 6; i++) {
       const date = new Date(currentYear, currentMonth + i, 1);
-      const value = date.toISOString().slice(0, 7);
+      // Format consistently as YYYY-MM
+      const value = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
       const label = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       
       console.log(`Adding month option: ${label}, value: ${value}`);
@@ -433,7 +441,7 @@ const BudgetForm = ({ budgetId, onComplete }: BudgetFormProps) => {
                               >
                                 <div className="flex items-center justify-between w-full">
                                   <span>{option.label}</span>
-                                  {option.value === new Date().toISOString().slice(0, 7) && (
+                                  {option.value === currentMonthString && (
                                     <Badge className="ml-2 bg-green-100 text-green-800 border-green-200" variant="outline">
                                       Current
                                     </Badge>

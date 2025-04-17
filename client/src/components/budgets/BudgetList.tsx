@@ -471,7 +471,17 @@ const BudgetList = ({ month, onEditBudget }: BudgetListProps) => {
               Create a budget to start tracking your spending and get personalized financial insights.
             </p>
             <Button 
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              onClick={() => {
+                // Log message for debugging
+                console.log("Create first budget button clicked in BudgetList");
+                // Scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                // Custom event to notify parent component
+                const event = new CustomEvent('showBudgetForm', { 
+                  detail: { month: month }
+                });
+                document.dispatchEvent(event);
+              }}
               className="bg-blue-600 hover:bg-blue-700"
             >
               Create Your First Budget

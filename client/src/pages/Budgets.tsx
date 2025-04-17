@@ -16,7 +16,6 @@ const Budgets = () => {
   
   // Get current date information
   const today = new Date();
-  // Use April 2025 if in development
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
   const currentMonthString = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}`;
@@ -26,6 +25,23 @@ const Budgets = () => {
   
   // Initialize the active month to the current month
   const [activeMonth, setActiveMonth] = useState<string>(currentMonthString);
+  
+  // Listen for custom event from BudgetList component
+  useEffect(() => {
+    const handleShowBudgetForm = (e: any) => {
+      console.log("Received showBudgetForm event with detail:", e.detail);
+      setShowForm(true);
+      if (e.detail && e.detail.month) {
+        setActiveMonth(e.detail.month);
+      }
+    };
+    
+    document.addEventListener('showBudgetForm', handleShowBudgetForm);
+    
+    return () => {
+      document.removeEventListener('showBudgetForm', handleShowBudgetForm);
+    };
+  }, []);
   
   // Fetch budget and spending data with improved refetch settings
   const { data: budgets = [] } = useQuery<any[]>({
@@ -78,11 +94,10 @@ const Budgets = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Generate month options for the last 3 months and next 3 months
+  // Generate month options for the current month and future months
   const getMonthOptions = () => {
     const options = [];
     const today = new Date();
-    // Using actual current date
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
     
@@ -90,8 +105,8 @@ const Budgets = () => {
     console.log(`Current date for month options: ${today.toISOString()}`);
     console.log(`Current month: ${currentMonth}, current year: ${currentYear}`);
     
-    // Generate options for the current month and 3 months before/after
-    for (let i = -2; i <= 3; i++) {
+    // Generate options for current month and 5 future months
+    for (let i = 0; i <= 5; i++) {
       const date = new Date(currentYear, currentMonth + i, 1);
       const value = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
       const label = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -296,7 +311,8 @@ const Budgets = () => {
           <Card className="mb-6 border-blue-200 shadow-md">
             <CardContent className="pt-6">
               <BudgetForm 
-                budgetId={selectedBudgetId} 
+                budgetId={selectedBudgetId}
+                defaultMonth={activeMonth}
                 onComplete={() => {
                   setShowForm(false);
                   setSelectedBudgetId(null);
