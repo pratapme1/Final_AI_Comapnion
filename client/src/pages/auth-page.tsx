@@ -58,30 +58,58 @@ const AuthPage = () => {
     };
     
     console.log("Attempting login with:", normalizedData);
+    
+    // Show a toast for login attempt
+    toast({
+      title: "Signing in",
+      description: "Please wait while we authenticate your credentials...",
+      variant: "default",
+      duration: 2000, // Show briefly then automatically dismiss
+    });
+    
     loginMutation.mutate(normalizedData, {
       onSuccess: (userData) => {
         console.log("Login successful in form handler:", userData);
         
-        // Display success toast
+        // Display success toast that stays longer
         toast({
-          title: "Success",
-          description: "Logged in successfully!",
+          title: "Success ✓",
+          description: "Logged in successfully! Redirecting to dashboard...",
           variant: "default",
+          duration: 3000, // Ensure toast is visible before redirect
         });
         
         // Explicitly update the user data in the auth context
         queryClient.setQueryData(["/api/user"], userData);
         
-        // Trigger a page reload instead of a client-side redirect
-        // This ensures that all state is properly refreshed
-        console.log("Triggering reload to refresh user state...");
-        window.location.href = '/';
+        // Add a brief delay to ensure toast is visible before redirect
+        setTimeout(() => {
+          // Trigger a page reload instead of a client-side redirect
+          // This ensures that all state is properly refreshed
+          console.log("Triggering reload to refresh user state...");
+          window.location.href = '/';
+        }, 500); // Short delay to ensure toast is seen
       },
       onError: (error) => {
         console.error("Login error:", error);
+        
+        // More detailed error message
+        let errorMessage = "Invalid username or password. Please try again.";
+        
+        // Check if there's a more specific error message
+        if (error.message) {
+          if (error.message.includes("404") || error.message.includes("401")) {
+            errorMessage = "The username or password you entered is incorrect.";
+          } else if (error.message.includes("timeout") || error.message.includes("network")) {
+            errorMessage = "Network issue. Please check your connection and try again.";
+          } else {
+            errorMessage = error.message; // Use server-provided message if available
+          }
+        }
+        
         toast({
           title: "Login Failed",
-          description: "Invalid username or password. Please try again.",
+          description: errorMessage,
           variant: "destructive",
         });
       }
@@ -95,30 +123,57 @@ const AuthPage = () => {
       username: data.username.toLowerCase()
     };
     
+    // Show a toast for registration attempt
+    toast({
+      title: "Creating Account",
+      description: "Setting up your account...",
+      variant: "default",
+      duration: 2000, // Show briefly then automatically dismiss
+    });
+    
     registerMutation.mutate(normalizedData, {
       onSuccess: (userData) => {
         console.log("Registration successful in form handler:", userData);
         
-        // Display success toast
+        // Display success toast with longer duration
         toast({
-          title: "Success",
-          description: "Account created successfully! You are now logged in.",
+          title: "Account Created ✓",
+          description: "Your account was created successfully! You are now logged in.",
           variant: "default",
+          duration: 3000, // Ensure toast is visible before redirect
         });
         
         // Explicitly update the user data in the auth context
         queryClient.setQueryData(["/api/user"], userData);
         
-        // Trigger a page reload instead of a client-side redirect
-        // This ensures that all state is properly refreshed
-        console.log("Triggering reload to refresh user state after registration...");
-        window.location.href = '/';
+        // Add a brief delay to ensure toast is visible before redirect
+        setTimeout(() => {
+          // Trigger a page reload instead of a client-side redirect
+          // This ensures that all state is properly refreshed
+          console.log("Triggering reload to refresh user state after registration...");
+          window.location.href = '/';
+        }, 500); // Short delay to ensure toast is seen
       },
       onError: (error) => {
         console.error("Registration error:", error);
+        
+        // More detailed error message
+        let errorMessage = "Unable to create account. Please try a different username.";
+        
+        // Check if there's a more specific error message
+        if (error.message) {
+          if (error.message.includes("exists")) {
+            errorMessage = "This username is already taken. Please choose another one.";
+          } else if (error.message.includes("timeout") || error.message.includes("network")) {
+            errorMessage = "Network issue. Please check your connection and try again.";
+          } else {
+            errorMessage = error.message; // Use server-provided message if available
+          }
+        }
+        
         toast({
           title: "Registration Failed",
-          description: error.message || "Unable to create account. Please try a different username.",
+          description: errorMessage,
           variant: "destructive",
         });
       }

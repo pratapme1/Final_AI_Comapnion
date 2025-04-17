@@ -121,20 +121,43 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
+    // Check if username was provided
+    if (!req.body.username) {
+      return res.status(400).json({ message: "Username is required" });
+    }
+    
+    // Check if password was provided
+    if (!req.body.password) {
+      return res.status(400).json({ message: "Password is required" });
+    }
+    
     passport.authenticate("local", (err, user, info) => {
       if (err) {
         console.error("Login error:", err);
-        return res.status(500).json({ message: "Internal server error during login" });
+        return res.status(500).json({ message: "Internal server error during login. Please try again." });
       }
       
       if (!user) {
-        return res.status(401).json({ message: "Invalid username or password" });
+        // Check if user exists first to give a more helpful error message
+        storage.getUserByUsername(req.body.username.toLowerCase())
+          .then(existingUser => {
+            if (!existingUser) {
+              return res.status(401).json({ message: "User not found. Please check your username and try again." });
+            } else {
+              return res.status(401).json({ message: "Incorrect password. Please try again." });
+            }
+          })
+          .catch(error => {
+            console.error("Error checking user existence:", error);
+            return res.status(401).json({ message: "Invalid username or password. Please try again." });
+          });
+        return;
       }
       
       req.login(user, (loginErr) => {
         if (loginErr) {
           console.error("Session login error:", loginErr);
-          return res.status(500).json({ message: "Failed to establish session" });
+          return res.status(500).json({ message: "Failed to establish session. Please try again." });
         }
         
         console.log("Login successful for user:", user.username);
