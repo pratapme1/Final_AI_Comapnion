@@ -234,9 +234,17 @@ export class MemStorage implements IStorage {
   }
   
   async getReceiptsByDateRange(userId: number, startDate: Date, endDate: Date): Promise<Receipt[]> {
-    return Array.from(this.receipts.values())
+    // Debug the date ranges
+    console.log(`Searching for receipts between ${startDate.toISOString()} and ${endDate.toISOString()}`);
+    
+    const receipts = Array.from(this.receipts.values())
       .filter((receipt) => {
         const receiptDate = new Date(receipt.date);
+        
+        // Debug receipt date comparisons
+        console.log(`Receipt ${receipt.id} date: ${receiptDate.toISOString()}, userId: ${receipt.userId}, matches user: ${receipt.userId === userId}`);
+        console.log(`Date comparison: >= ${startDate.toISOString()}: ${receiptDate >= startDate}, <= ${endDate.toISOString()}: ${receiptDate <= endDate}`);
+        
         return (
           receipt.userId === userId &&
           receiptDate >= startDate &&
@@ -244,6 +252,9 @@ export class MemStorage implements IStorage {
         );
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+    console.log(`Found ${receipts.length} receipts in date range`);
+    return receipts;
   }
   
   async getReceipt(id: number): Promise<Receipt | undefined> {
