@@ -229,7 +229,12 @@ export async function processReceiptImage(base64Image: string): Promise<{
           role: "user",
           content: [
             { "type": "text", "text": "Extract the information from this receipt in the JSON format specified:" },
-            { "type": "image_url", "image_url": `data:image/jpeg;base64,${base64Image}` }
+            { 
+              "type": "image_url", 
+              "image_url": {
+                "url": `data:image/jpeg;base64,${base64Image}`
+              }
+            }
           ]
         }
       ],
