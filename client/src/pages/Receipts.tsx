@@ -136,21 +136,26 @@ const Receipts = () => {
     </>
   );
 
-  // Determine which content to render based on the current route
-  const renderContent = () => {
-    if (isBaseRoute) {
-      return renderReceiptsList();
-    } else if (isUploadRoute) {
-      return renderReceiptUpload();
-    } else if (isDetailRoute && detailParams) {
-      return renderReceiptDetail(detailParams.id);
-    } else {
-      // For any other route under /receipts/*, show the list by default
-      return renderReceiptsList();
-    }
-  };
-
-  return <div>{renderContent()}</div>;
+  // Use internal wouter Switch for better nested route handling
+  return (
+    <div>
+      <Switch>
+        <Route path="/receipts" exact>
+          {renderReceiptsList()}
+        </Route>
+        <Route path="/receipts/upload">
+          {renderReceiptUpload()}
+        </Route>
+        <Route path="/receipts/:id">
+          {(params) => renderReceiptDetail(params.id)}
+        </Route>
+        <Route>
+          {/* Default fallback if no routes match */}
+          {renderReceiptsList()}
+        </Route>
+      </Switch>
+    </div>
+  );
 };
 
 export default Receipts;

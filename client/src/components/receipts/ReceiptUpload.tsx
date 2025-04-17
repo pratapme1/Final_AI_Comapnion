@@ -135,9 +135,9 @@ const ReceiptUpload = () => {
       // Pre-fill form with extracted data
       if (response) {
         // Ensure items have string values for the form
-        const formattedItems = response.items?.map(item => ({
+        const formattedItems = response.items?.map((item: {name: string, price: number}) => ({
           name: item.name || '',
-          price: item.price?.toString() || ''
+          price: (item.price !== undefined) ? item.price.toString() : ''
         })) || [{ name: "", price: "" }];
         
         form.reset({

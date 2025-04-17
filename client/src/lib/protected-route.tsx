@@ -58,12 +58,16 @@ export function ProtectedRoute({
     console.log(`User authenticated, rendering component for path: ${path}`);
   }
   
-  // If the path ends with /* or similar pattern, we're handling a wildcard route
-  if (path.includes('*')) {
-    // For wildcard routes, we need to render the component directly
-    return <Route path={path}>{() => <Component />}</Route>;
-  }
-  
-  // For normal routes, use the standard component pattern
-  return <Route path={path} component={Component} />;
+  // Always use the render prop pattern for consistency and to ensure props are passed correctly
+  return (
+    <Route path={path}>
+      {(params) => {
+        // Log params in development mode to help with debugging
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`Rendering protected route ${path} with params:`, params);
+        }
+        return <Component />;
+      }}
+    </Route>
+  );
 }
