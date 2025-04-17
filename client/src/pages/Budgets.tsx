@@ -270,6 +270,7 @@ const Budgets = () => {
         value={currentMonth} 
         onValueChange={setCurrentMonth}
         className="mb-6"
+        defaultValue={currentMonth}
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-900">Monthly Budgets</h2>
@@ -286,18 +287,16 @@ const Budgets = () => {
           </TabsList>
         </div>
         
-        {monthOptions.map((option) => (
-          <TabsContent key={option.value} value={option.value}>
-            <Card className="border-blue-100">
-              <CardContent className="pt-6">
-                <BudgetList 
-                  month={option.value} 
-                  onEditBudget={handleEditBudget}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        ))}
+        <TabsContent value={currentMonth}>
+          <Card className="border-blue-100">
+            <CardContent className="pt-6">
+              <BudgetList 
+                month={currentMonth} 
+                onEditBudget={handleEditBudget}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Budget Insights */}
