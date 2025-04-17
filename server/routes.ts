@@ -286,10 +286,39 @@ app.post("/api/process-receipt-image", async (req: Request, res: Response) => {
     console.log("Processing receipt image with OpenAI...");
     const extractedData = await processReceiptImage(image);
     
+    // Auto-categorize the receipt based on merchant and items
+    let suggestedCategory = "Others";
+    
+    // If items are available, try to categorize based on them
+    if (extractedData.items && extractedData.items.length > 0) {
+      // Get categories for individual items
+      const categorizedItems = await categorizeItems(extractedData.items);
+      extractedData.items = categorizedItems;
+      
+      // Determine the most frequent category among items
+      const categoryCounts = {};
+      categorizedItems.forEach(item => {
+        if (item.category) {
+          categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
+        }
+      });
+      
+      // Find the most common category
+      let maxCount = 0;
+      Object.entries(categoryCounts).forEach(([category, count]) => {
+        if (count > maxCount) {
+          maxCount = count as number;
+          suggestedCategory = category;
+        }
+      });
+    }
+    
     // Add additional context for better user experience
     const enhancedResponse = {
       ...extractedData,
-      processingMethod: "gpt-4o with enhanced currency detection",
+      items: extractedData.items,
+      category: suggestedCategory, // Add suggested category for the receipt
+      processingMethod: "gpt-4o with enhanced categorization",
       detectionConfidence: "high"
     };
     
@@ -349,13 +378,36 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
         console.log(`Receipt using currency: ${validatedData.currency}`);
       }
       
-      // Create receipt with categorized items
+      // Use provided category or determine most common category from items
+      let receiptCategory = validatedData.category || "Others";
+      
+      if (!validatedData.category) {
+        // Count categories to determine the most common one
+        const categoryCounts: Record<string, number> = {};
+        itemsWithCategories.forEach(item => {
+          if (item.category) {
+            categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
+          }
+        });
+        
+        // Find the most common category
+        let maxCount = 0;
+        Object.entries(categoryCounts).forEach(([category, count]) => {
+          if (count > maxCount) {
+            maxCount = count;
+            receiptCategory = category;
+          }
+        });
+      }
+      
+      // Create receipt with categorized items and receipt level category
       const newReceipt = await storage.createReceipt({
         userId,
         merchantName: validatedData.merchantName,
         date: validatedData.date,
         total: validatedData.total.toString(),
-        items: itemsWithCategories
+        items: itemsWithCategories,
+        category: receiptCategory // Add receipt-level category
       });
       
       // Process receipt items in the background

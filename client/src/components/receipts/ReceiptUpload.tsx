@@ -312,7 +312,7 @@ const ReceiptUpload = () => {
 
               {form.watch("items").map((_, index) => (
                 <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                  <div className="md:col-span-8">
+                  <div className="md:col-span-4">
                     <FormField
                       control={form.control}
                       name={`items.${index}.name`}
@@ -330,7 +330,7 @@ const ReceiptUpload = () => {
                     />
                   </div>
 
-                  <div className="md:col-span-3">
+                  <div className="md:col-span-2">
                     <FormField
                       control={form.control}
                       name={`items.${index}.price`}
@@ -348,6 +348,44 @@ const ReceiptUpload = () => {
                               {...field}
                             />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="md:col-span-5">
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.category`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className={index !== 0 ? "sr-only" : undefined}>
+                            Category
+                          </FormLabel>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            defaultValue={form.getValues("category") || "Others"}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select category" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Groceries">Groceries</SelectItem>
+                              <SelectItem value="Dining">Dining</SelectItem>
+                              <SelectItem value="Utilities">Utilities</SelectItem>
+                              <SelectItem value="Transportation">Transportation</SelectItem>
+                              <SelectItem value="Entertainment">Entertainment</SelectItem>
+                              <SelectItem value="Shopping">Shopping</SelectItem>
+                              <SelectItem value="Health">Health</SelectItem>
+                              <SelectItem value="Travel">Travel</SelectItem>
+                              <SelectItem value="Personal Care">Personal Care</SelectItem>
+                              <SelectItem value="Others">Others</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
