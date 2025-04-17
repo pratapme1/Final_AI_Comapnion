@@ -42,6 +42,7 @@ export interface IStorage {
   getReceipt(id: number): Promise<Receipt | undefined>;
   createReceipt(receipt: InsertReceipt): Promise<Receipt>;
   updateReceiptItem(receiptId: number, itemIndex: number, updates: Partial<ReceiptItem>): Promise<Receipt | undefined>;
+  deleteReceipt(id: number): Promise<boolean>;
   
   // Insight methods
   getInsights(userId: number): Promise<Insight[]>;
@@ -266,6 +267,19 @@ export class MemStorage implements IStorage {
     const updatedReceipt = { ...receipt, items: updatedItems };
     this.receipts.set(receiptId, updatedReceipt);
     return updatedReceipt;
+  }
+  
+  async deleteReceipt(id: number): Promise<boolean> {
+    // Delete all insights related to this receipt
+    const receiptIdStr = id.toString();
+    Array.from(this.insights.values()).forEach(insight => {
+      if (insight.relatedItemId === receiptIdStr) {
+        this.insights.delete(insight.id);
+      }
+    });
+    
+    // Delete the receipt
+    return this.receipts.delete(id);
   }
   
   // Insight methods
@@ -619,6 +633,26 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updatedReceipt;
+  }
+  
+  async deleteReceipt(id: number): Promise<boolean> {
+    try {
+      // First, delete all related insights
+      const receiptIdStr = id.toString();
+      await db
+        .delete(insights)
+        .where(eq(insights.relatedItemId, receiptIdStr));
+      
+      // Then delete the receipt
+      const result = await db
+        .delete(receipts)
+        .where(eq(receipts.id, id));
+        
+      return !!result;
+    } catch (error) {
+      console.error("Error deleting receipt:", error);
+      return false;
+    }
   }
 
   // Insight methods

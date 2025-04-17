@@ -199,6 +199,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint to delete a receipt
+  app.delete("/api/receipts/:id", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid receipt id" });
+      }
+      
+      // Check if the receipt exists and belongs to the user
+      const receipt = await storage.getReceipt(id);
+      
+      if (!receipt) {
+        return res.status(404).json({ message: "Receipt not found" });
+      }
+      
+      if (receipt.userId !== req.user.id) {
+        return res.status(403).json({ message: "You do not have permission to delete this receipt" });
+      }
+      
+      // Delete the receipt
+      const deleted = await storage.deleteReceipt(id);
+      
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete receipt" });
+      }
+      
+      res.json({ success: true, message: "Receipt deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting receipt:", error);
+      res.status(500).json({ message: "Failed to delete receipt" });
+    }
+  });
+  
   app.post("/api/receipts/upload", upload.single('file'), async (req: Request, res: Response) => {
   try {
     if (!req.isAuthenticated()) {
