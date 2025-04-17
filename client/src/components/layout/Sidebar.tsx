@@ -62,9 +62,8 @@ const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
     { href: "/insights", label: "Insights", icon: "Lightbulb" },
   ];
 
-  // Settings links
+  // Settings links - removed Account Settings as it's not implemented yet
   const settingsLinks = [
-    { href: "/settings", label: "Account Settings", icon: "Settings" },
     { href: "/logout", label: "Logout", icon: "LogOut" },
   ];
 

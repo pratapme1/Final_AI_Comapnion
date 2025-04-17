@@ -34,6 +34,13 @@ function Router() {
   // Get current location path
   const [location] = useLocation();
   
+  // Auto-collapse sidebar on mobile when location changes
+  useEffect(() => {
+    // Close the sidebar on mobile when the route changes
+    setIsSidebarOpen(false);
+    console.log("Route changed, sidebar collapsed on mobile:", location);
+  }, [location]);
+  
   // Check if current page is auth page
   const isAuthPage = location && location === '/auth';
 

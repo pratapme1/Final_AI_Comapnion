@@ -50,38 +50,41 @@ const Insights = () => {
         onValueChange={setActiveTab}
         className="mb-6"
       >
-        <TabsList className="grid grid-cols-2 md:grid-cols-5 w-full">
-          <TabsTrigger value="all" className="relative">
-            All Insights
-            <Badge variant="secondary" className="ml-2 absolute -top-2 -right-2 text-xs">
-              {countByType.all}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="saving" className="relative">
-            Savings
-            <Badge variant="secondary" className="ml-2 absolute -top-2 -right-2 text-xs">
-              {countByType.saving}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="budget-alert" className="relative">
-            Budget Alerts
-            <Badge variant="secondary" className="ml-2 absolute -top-2 -right-2 text-xs">
-              {countByType["budget-alert"]}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="recurring" className="relative">
-            Recurring
-            <Badge variant="secondary" className="ml-2 absolute -top-2 -right-2 text-xs">
-              {countByType.recurring}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="digest" className="relative">
-            Weekly Digest
-            <Badge variant="secondary" className="ml-2 absolute -top-2 -right-2 text-xs">
-              {countByType.digest}
-            </Badge>
-          </TabsTrigger>
-        </TabsList>
+        {/* Responsive tabs - 2 rows on mobile, 1 row on larger screens */}
+        <div className="overflow-x-auto pb-3 -mb-3">
+          <TabsList className="inline-flex md:flex md:w-full min-w-max">
+            <TabsTrigger value="all" className="relative">
+              All Insights
+              <Badge variant="secondary" className="ml-2 absolute -top-1 -right-1 text-xs">
+                {countByType.all}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="saving" className="relative">
+              Savings
+              <Badge variant="secondary" className="ml-2 absolute -top-1 -right-1 text-xs">
+                {countByType.saving}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="budget-alert" className="relative">
+              Budget Alerts
+              <Badge variant="secondary" className="ml-2 absolute -top-1 -right-1 text-xs">
+                {countByType["budget-alert"]}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="recurring" className="relative">
+              Recurring
+              <Badge variant="secondary" className="ml-2 absolute -top-1 -right-1 text-xs">
+                {countByType.recurring}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="digest" className="relative">
+              Weekly Digest
+              <Badge variant="secondary" className="ml-2 absolute -top-1 -right-1 text-xs">
+                {countByType.digest}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
+        </div>
         
         {Object.keys(countByType).map((tabKey) => (
           <TabsContent key={tabKey} value={tabKey}>
