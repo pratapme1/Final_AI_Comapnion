@@ -78,13 +78,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (existingBudget) {
         // Update existing budget
-        const updatedBudget = await storage.updateBudget(existingBudget.id, validatedData.limit);
+        const updatedBudget = await storage.updateBudget(existingBudget.id, validatedData.limit.toString());
         res.json(updatedBudget);
       } else {
         // Create new budget
         const newBudget = await storage.createBudget({
           userId,
-          ...validatedData
+          category: validatedData.category,
+          month: validatedData.month,
+          limit: validatedData.limit.toString()
         });
         res.json(newBudget);
       }
@@ -99,6 +101,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.put("/api/budgets/:id", async (req: Request, res: Response) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
       const id = parseInt(req.params.id);
       const limit = parseFloat(req.body.limit);
       
@@ -106,7 +112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid id or limit" });
       }
       
-      const updatedBudget = await storage.updateBudget(id, limit);
+      const updatedBudget = await storage.updateBudget(id, limit.toString());
       
       if (!updatedBudget) {
         return res.status(404).json({ message: "Budget not found" });
@@ -213,6 +219,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 app.post("/api/receipts", async (req: Request, res: Response) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
       const receiptSchema = z.object({
         merchantName: z.string(),
         date: z.string().transform(str => new Date(str)),
@@ -224,7 +234,7 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
       });
       
       const validatedData = receiptSchema.parse(req.body);
-      const userId = 1; // Using default user for demo
+      const userId = req.user.id;
       
       // Use AI to categorize items
       const itemsWithCategories = await categorizeItems(validatedData.items);
@@ -234,7 +244,7 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
         userId,
         merchantName: validatedData.merchantName,
         date: validatedData.date,
-        total: validatedData.total,
+        total: validatedData.total.toString(),
         items: itemsWithCategories
       });
       
@@ -252,9 +262,13 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
   });
   
   // Stats endpoints
-  app.get("/api/stats", async (_req: Request, res: Response) => {
+  app.get("/api/stats", async (req: Request, res: Response) => {
     try {
-      const userId = 1; // Using default user for demo
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const userId = req.user.id;
       const stats = await storage.getStats(userId);
       res.json(stats);
     } catch (error) {
@@ -262,9 +276,13 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
     }
   });
   
-  app.get("/api/stats/budget-status", async (_req: Request, res: Response) => {
+  app.get("/api/stats/budget-status", async (req: Request, res: Response) => {
     try {
-      const userId = 1; // Using default user for demo
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const userId = req.user.id;
       const budgetStatuses = await storage.getBudgetStatuses(userId);
       res.json(budgetStatuses);
     } catch (error) {
@@ -272,9 +290,13 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
     }
   });
   
-  app.get("/api/stats/category-spending", async (_req: Request, res: Response) => {
+  app.get("/api/stats/category-spending", async (req: Request, res: Response) => {
     try {
-      const userId = 1; // Using default user for demo
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const userId = req.user.id;
       const categorySpending = await storage.getCategorySpending(userId);
       res.json(categorySpending);
     } catch (error) {
@@ -284,7 +306,11 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
   
   app.get("/api/stats/monthly-spending", async (req: Request, res: Response) => {
     try {
-      const userId = 1; // Using default user for demo
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const userId = req.user.id;
       const months = req.query.months ? parseInt(req.query.months as string) : 6;
       
       const monthlySpending = await storage.getMonthlySpending(userId, months);
@@ -297,7 +323,11 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
   // Insights endpoints
   app.get("/api/insights", async (req: Request, res: Response) => {
     try {
-      const userId = 1; // Using default user for demo
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const userId = req.user.id;
       const type = req.query.type as string;
       
       let insights;
@@ -316,6 +346,10 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
   
   app.put("/api/insights/:id/read", async (req: Request, res: Response) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
       const id = parseInt(req.params.id);
       
       if (isNaN(id)) {
