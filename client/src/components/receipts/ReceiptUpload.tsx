@@ -7,13 +7,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { createReceipt } from "@/lib/openai";
+import { createReceipt, uploadReceiptFile } from "@/lib/openai";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { PlusCircle, X } from "lucide-react";
+import { PlusCircle, X, Upload } from "lucide-react";
 
-// Define the receipt schema
 const receiptSchema = z.object({
   merchantName: z.string().min(1, "Merchant name is required"),
   date: z.string().refine(val => !isNaN(Date.parse(val)), {
@@ -37,8 +36,8 @@ type ReceiptFormValues = z.infer<typeof receiptSchema>;
 const ReceiptUpload = () => {
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadedData, setUploadedData] = useState<any>(null);
 
-  // Initialize the form
   const form = useForm<ReceiptFormValues>({
     resolver: zodResolver(receiptSchema),
     defaultValues: {
@@ -49,10 +48,8 @@ const ReceiptUpload = () => {
     }
   });
 
-  // Handle form submission
   const mutation = useMutation({
     mutationFn: async (data: ReceiptFormValues) => {
-      // Convert string values to appropriate types
       const formattedData = {
         merchantName: data.merchantName,
         date: new Date(data.date),
@@ -62,7 +59,7 @@ const ReceiptUpload = () => {
           price: parseFloat(item.price)
         }))
       };
-      
+
       return createReceipt(
         formattedData.merchantName,
         formattedData.date,
@@ -72,27 +69,25 @@ const ReceiptUpload = () => {
     },
     onSuccess: () => {
       toast({
-        title: "Receipt uploaded successfully",
+        title: "Receipt saved successfully",
         description: "Your receipt has been processed and insights are being generated.",
       });
-      
-      // Reset the form
+
       form.reset({
         merchantName: "",
         date: new Date().toISOString().split("T")[0],
         total: "",
         items: [{ name: "", price: "" }]
       });
-      
-      // Invalidate queries to refresh data
+
       queryClient.invalidateQueries({ queryKey: ['/api/receipts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
       queryClient.invalidateQueries({ queryKey: ['/api/insights'] });
     },
     onError: () => {
       toast({
-        title: "Error uploading receipt",
-        description: "There was a problem uploading your receipt. Please try again.",
+        title: "Error saving receipt",
+        description: "There was a problem saving your receipt. Please try again.",
         variant: "destructive"
       });
     }
@@ -102,13 +97,11 @@ const ReceiptUpload = () => {
     mutation.mutate(data);
   };
 
-  // Add a new item field
   const addItemField = () => {
     const items = form.getValues("items");
     form.setValue("items", [...items, { name: "", price: "" }]);
   };
 
-  // Remove an item field
   const removeItemField = (index: number) => {
     const items = form.getValues("items");
     if (items.length > 1) {
@@ -119,26 +112,44 @@ const ReceiptUpload = () => {
     }
   };
 
-  // Handle file upload (mock function since we're not implementing actual OCR)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsUploading(true);
-    
-    try {
-      // Mock OCR process with a timeout
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+    const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+    if (!validTypes.includes(file.type)) {
       toast({
-        title: "Receipt scanning not available",
-        description: "Please enter receipt details manually.",
-        variant: "default"
+        title: "Invalid file type",
+        description: "Please upload a PDF, PNG, or JPG file.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const response = await uploadReceiptFile(file);
+      setUploadedData(response);
+
+      // Pre-fill form with extracted data
+      if (response) {
+        form.reset({
+          merchantName: response.merchantName || '',
+          date: response.date?.split('T')[0] || new Date().toISOString().split("T")[0],
+          total: response.total?.toString() || '',
+          items: response.items || [{ name: "", price: "" }]
+        });
+      }
+
+      toast({
+        title: "Receipt uploaded successfully",
+        description: "The receipt data has been extracted and pre-filled.",
       });
     } catch (error) {
       toast({
-        title: "Error scanning receipt",
-        description: "There was a problem scanning your receipt. Please enter details manually.",
+        title: "Error processing receipt",
+        description: "There was a problem processing your receipt. Please enter details manually.",
         variant: "destructive"
       });
     } finally {
@@ -159,17 +170,28 @@ const ReceiptUpload = () => {
 
         <div className="mb-6">
           <Label htmlFor="receipt-upload" className="block mb-2">
-            Scan Receipt (Optional)
+            Upload Receipt File (PDF, PNG, or JPG)
           </Label>
-          <Input
-            id="receipt-upload"
-            type="file"
-            accept="image/*"
-            onChange={handleFileUpload}
-            disabled={isUploading || mutation.isPending}
-          />
+          <div className="flex gap-4 items-center">
+            <Input
+              id="receipt-upload"
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg"
+              onChange={handleFileUpload}
+              disabled={isUploading || mutation.isPending}
+              className="flex-1"
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={isUploading}
+              className="flex-shrink-0"
+            >
+              <Upload className="h-4 w-4" />
+            </Button>
+          </div>
           {isUploading && (
-            <p className="text-sm text-gray-500 mt-2">Scanning receipt...</p>
+            <p className="text-sm text-gray-500 mt-2">Processing receipt...</p>
           )}
         </div>
 

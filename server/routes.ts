@@ -164,7 +164,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/receipts", async (req: Request, res: Response) => {
+  import multer from 'multer';
+import { processReceiptImage } from "./ai";
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (_req, file, cb) => {
+    const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+    if (validTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  },
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
+});
+
+app.post("/api/receipts/upload", upload.single('file'), async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    // Convert file buffer to base64
+    const base64Image = req.file.buffer.toString('base64');
+    
+    // Process the image using OCR and GPT
+    const extractedData = await processReceiptImage(base64Image);
+    
+    res.json(extractedData);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to process receipt" });
+  }
+});
+
+app.post("/api/receipts", async (req: Request, res: Response) => {
     try {
       const receiptSchema = z.object({
         merchantName: z.string(),

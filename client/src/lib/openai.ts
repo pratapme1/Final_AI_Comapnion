@@ -21,6 +21,12 @@ export async function deleteBudget(budgetId: number) {
 }
 
 // Receipt related functions
+export async function uploadReceiptFile(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiRequest("POST", "/api/receipts/upload", formData, true);
+}
+
 export async function createReceipt(merchantName: string, date: Date, total: number, items: any[]) {
   return apiRequest("POST", "/api/receipts", { 
     merchantName, 
