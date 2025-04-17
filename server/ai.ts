@@ -48,8 +48,18 @@ export async function categorizeItems(items: ReceiptItem[]): Promise<ReceiptItem
       }
 
       // Parse the response and add to result
-      const categorizedItems = JSON.parse(content).items || JSON.parse(content);
-      result.push(...categorizedItems);
+      try {
+        const parsed = JSON.parse(content);
+        const categorizedItems = Array.isArray(parsed) ? parsed : (parsed.items || []);
+        
+        if (Array.isArray(categorizedItems)) {
+          result.push(...categorizedItems);
+        } else {
+          console.warn("Unexpected categorizedItems format:", categorizedItems);
+        }
+      } catch (parseError) {
+        console.error("Error parsing categorization response:", parseError);
+      }
     }
 
     return result;
