@@ -144,28 +144,64 @@ const BudgetList = ({ month, onEditBudget }: BudgetListProps) => {
     }
   };
 
-  // Calculate days left in current month
+  // Calculate days left for the selected month
   const getDaysLeftInMonth = () => {
     const [year, monthStr] = month.split('-');
     const monthNum = parseInt(monthStr, 10) - 1;
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth();
+    const currentDay = today.getDate();
+    
+    console.log(`Calculating days left for month: ${month}`);
+    console.log(`Current date: ${today.toISOString()}`);
 
     // If we're displaying the current month
     if (parseInt(year) === currentYear && monthNum === currentMonth) {
       const lastDay = new Date(currentYear, currentMonth + 1, 0).getDate();
-      const currentDay = today.getDate();
-      return lastDay - currentDay;
+      const daysLeft = lastDay - currentDay;
+      console.log(`Current month: ${lastDay} days total, ${daysLeft} days left`);
+      return daysLeft;
     }
     
-    // For future months, return the total days in that month
+    // For future months, calculate days from today through the end of the selected month
     if (parseInt(year) > currentYear || 
         (parseInt(year) === currentYear && monthNum > currentMonth)) {
-      return new Date(parseInt(year), monthNum + 1, 0).getDate();
+      
+      // Calculate days left in current month
+      const lastDayCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const daysLeftCurrentMonth = lastDayCurrentMonth - currentDay;
+      
+      // Calculate days in all months between current and selected
+      let totalDays = daysLeftCurrentMonth;
+      
+      // Add days for all full months between current and selected
+      let tempMonth = currentMonth + 1;
+      let tempYear = currentYear;
+      
+      while (tempYear < parseInt(year) || (tempYear === parseInt(year) && tempMonth < monthNum)) {
+        const daysInMonth = new Date(tempYear, tempMonth + 1, 0).getDate();
+        totalDays += daysInMonth;
+        
+        tempMonth++;
+        if (tempMonth > 11) {
+          tempMonth = 0;
+          tempYear++;
+        }
+      }
+      
+      // Add days in the selected month
+      if (tempYear === parseInt(year) && tempMonth === monthNum) {
+        const daysInSelectedMonth = new Date(parseInt(year), monthNum + 1, 0).getDate();
+        totalDays += daysInSelectedMonth;
+      }
+      
+      console.log(`Future month: ${totalDays} total days from now through end of ${formatMonth(month)}`);
+      return totalDays;
     }
     
     // For past months, return 0
+    console.log(`Past month, returning 0 days left`);
     return 0;
   };
 
