@@ -105,7 +105,9 @@ function Router() {
             <Switch>
               <ProtectedRoute path="/" component={Dashboard} />
               <ProtectedRoute path="/budgets" component={Budgets} />
-              <ProtectedRoute path="/receipts/*" component={Receipts} />
+              <ProtectedRoute path="/receipts/upload" component={Receipts} />
+              <ProtectedRoute path="/receipts/:id" component={Receipts} />
+              <ProtectedRoute path="/receipts" component={Receipts} />
               <ProtectedRoute path="/analytics" component={Analytics} />
               <ProtectedRoute path="/insights" component={Insights} />
               <Route component={NotFound} />

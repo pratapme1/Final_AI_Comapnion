@@ -140,18 +140,18 @@ const Receipts = () => {
   return (
     <div>
       <Switch>
-        <Route path="/receipts" exact>
-          {renderReceiptsList()}
+        <Route path="/receipts">
+          {() => renderReceiptsList()}
         </Route>
         <Route path="/receipts/upload">
-          {renderReceiptUpload()}
+          {() => renderReceiptUpload()}
         </Route>
         <Route path="/receipts/:id">
           {(params) => renderReceiptDetail(params.id)}
         </Route>
         <Route>
           {/* Default fallback if no routes match */}
-          {renderReceiptsList()}
+          {() => renderReceiptsList()}
         </Route>
       </Switch>
     </div>
