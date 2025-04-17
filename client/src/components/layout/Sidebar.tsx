@@ -12,46 +12,43 @@ interface SidebarProps {
 const Sidebar = ({ isMobileOpen, closeMobileSidebar }: SidebarProps) => {
   const { logoutMutation } = useAuth();
   const [location, setLocation] = useLocation();
-
-  // Use the imported useToast hook
   const { toast } = useToast();
   
   const handleLogout = () => {
-    // Show a logout attempt toast
+    // Show loading toast
     toast({
       title: "Logging out",
       description: "Please wait...",
-      variant: "default",
-      duration: 2000, // Show briefly
     });
     
+    // Execute logout
     logoutMutation.mutate(undefined, {
       onSuccess: () => {
-        // Show a successful logout toast
+        console.log("Logout successful");
+        
+        // Show success toast
         toast({
-          title: "Logged out successfully",
-          description: "You have been securely logged out",
-          variant: "default",
-          duration: 3000,
+          title: "Success",
+          description: "You have been logged out successfully",
         });
         
-        // Clear all cached data
+        // Clear any cached data
         queryClient.clear();
         
-        // Short delay to ensure toast is visible, then redirect
+        // Use a short delay to ensure toast is visible before redirect
         setTimeout(() => {
-          // Use window.location for more reliable redirect after logout
           window.location.href = '/auth';
-        }, 500);
+        }, 1000);
       },
       onError: (error) => {
-        // Show error toast if logout fails
+        console.error("Logout error:", error);
+        
+        // Show error toast
         toast({
           title: "Logout failed",
           description: "Please try again",
           variant: "destructive",
         });
-        console.error("Logout error:", error);
       }
     });
   };
