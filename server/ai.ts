@@ -200,39 +200,76 @@ export async function processReceiptImage(base64Image: string): Promise<{
   items: Array<{ name: string; price: number }>;
 }> {
   try {
+    console.log("Processing receipt image with OpenAI...");
+    
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: "You are an expert at extracting information from receipt images. Extract merchant name, date, total amount, and itemized list with prices."
+          content: `You are an expert at extracting information from receipt images. 
+          Extract the following information in JSON format:
+          - merchantName: The store or business name
+          - date: The date of purchase in YYYY-MM-DD format
+          - total: The total amount as a number (without currency symbol)
+          - items: An array of items purchased, each with name and price (as number)
+          
+          Return ONLY valid JSON with this exact structure:
+          {
+            "merchantName": "Store Name",
+            "date": "YYYY-MM-DD",
+            "total": 123.45,
+            "items": [
+              {"name": "Item 1", "price": 10.99},
+              {"name": "Item 2", "price": 20.99}
+            ]
+          }`
         },
         {
           role: "user",
           content: [
-            { "type": "text", "text": "Please extract information from this receipt image:" },
+            { "type": "text", "text": "Extract the information from this receipt in the JSON format specified:" },
             { "type": "image_url", "image_url": `data:image/jpeg;base64,${base64Image}` }
           ]
         }
       ],
-      max_tokens: 500
+      response_format: { type: "json_object" },
+      max_tokens: 1000
     });
 
     const content = response.choices[0].message.content;
-    if (!content) throw new Error("No content in response");
+    if (!content) throw new Error("No content in OpenAI response");
+    
+    console.log("OpenAI extraction complete");
 
-    // Parse the GPT response into structured data
-    const parsed = JSON.parse(content);
-
-    return {
-      merchantName: parsed.merchantName,
-      date: parsed.date,
-      total: parsed.total,
-      items: parsed.items.map((item: any) => ({
-        name: item.name,
-        price: item.price
-      }))
-    };
+    try {
+      // Parse the GPT response into structured data
+      const parsed = JSON.parse(content);
+      
+      // Validate the required fields
+      if (!parsed.merchantName || !parsed.date || !parsed.total || !Array.isArray(parsed.items)) {
+        throw new Error("Missing required fields in parsed data");
+      }
+      
+      // Ensure total is a number
+      const total = typeof parsed.total === 'number' ? parsed.total : parseFloat(parsed.total);
+      
+      // Process items to ensure they have the correct format
+      const items = parsed.items.map((item: any) => ({
+        name: String(item.name || 'Unknown item'),
+        price: typeof item.price === 'number' ? item.price : parseFloat(item.price || '0')
+      }));
+      
+      return {
+        merchantName: String(parsed.merchantName),
+        date: String(parsed.date),
+        total: isNaN(total) ? 0 : total,
+        items: items
+      };
+    } catch (parseError) {
+      console.error("Failed to parse OpenAI response:", parseError, content);
+      throw new Error("Failed to parse extracted receipt data");
+    }
   } catch (error) {
     console.error("Error processing receipt image:", error);
     throw new Error("Failed to process receipt image");

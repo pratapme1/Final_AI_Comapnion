@@ -24,7 +24,20 @@ export async function deleteBudget(budgetId: number) {
 export async function uploadReceiptFile(file: File) {
   const formData = new FormData();
   formData.append('file', file);
-  return apiRequest("POST", "/api/receipts/upload", formData, true);
+  
+  // Use standard fetch for FormData uploads
+  const response = await fetch('/api/receipts/upload', {
+    method: 'POST',
+    body: formData,
+    credentials: 'include'
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+    throw new Error(errorData.message || `Error: ${response.status}`);
+  }
+  
+  return response.json();
 }
 
 export async function createReceipt(merchantName: string, date: Date, total: number, items: any[]) {
@@ -108,12 +121,20 @@ export async function processReceiptImage(base64Image: string): Promise<{
   try {
     const response = await apiRequest("POST", "/api/process-receipt-image", { image: base64Image });
     
+    // Parse the response
+    const data = response as any;
+    
     // Convert string date to Date object
-    if (response.date && typeof response.date === 'string') {
-      response.date = new Date(response.date);
+    if (data.date && typeof data.date === 'string') {
+      data.date = new Date(data.date);
     }
     
-    return response;
+    return {
+      merchantName: data.merchantName || '',
+      date: data.date || new Date(),
+      total: data.total || 0,
+      items: Array.isArray(data.items) ? data.items : []
+    };
   } catch (error) {
     console.error("Error processing receipt image:", error);
     throw new Error("Failed to process receipt image. Please try again or enter details manually.");
