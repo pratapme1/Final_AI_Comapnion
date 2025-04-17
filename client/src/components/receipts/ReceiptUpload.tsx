@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { createReceipt, uploadReceiptFile } from "@/lib/openai";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { PlusCircle, X, Upload } from "lucide-react";
+import { PlusCircle, X, Upload, Save, FileStack } from "lucide-react";
 
 const receiptSchema = z.object({
   merchantName: z.string().min(1, "Merchant name is required"),
@@ -42,6 +42,8 @@ const ReceiptUpload = () => {
   const [uploadedData, setUploadedData] = useState<any>(null);
   const [pendingUploads, setPendingUploads] = useState<File[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [processedReceipts, setProcessedReceipts] = useState<any[]>([]);
+  const [isSubmittingBatch, setIsSubmittingBatch] = useState(false);
 
   const form = useForm<ReceiptFormValues>({
     resolver: zodResolver(receiptSchema),
