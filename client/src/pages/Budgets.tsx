@@ -14,12 +14,17 @@ const Budgets = () => {
   const [showForm, setShowForm] = useState(false);
   const [selectedBudgetId, setSelectedBudgetId] = useState<number | null>(null);
   
-  // Set initial active month explicitly using the actual current date
+  // Get current date information
   const today = new Date();
+  // Use April 2025 if in development
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
   const currentMonthString = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}`;
   
+  // Log for debugging
+  console.log("Current month string in main component:", currentMonthString);
+  
+  // Initialize the active month to the current month
   const [activeMonth, setActiveMonth] = useState<string>(currentMonthString);
   
   // Fetch budget and spending data with improved refetch settings
@@ -77,13 +82,18 @@ const Budgets = () => {
   const getMonthOptions = () => {
     const options = [];
     const today = new Date();
-    // Using actual current date, not 2025
+    // Using actual current date
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
     
+    // Log current date info
+    console.log(`Current date for month options: ${today.toISOString()}`);
+    console.log(`Current month: ${currentMonth}, current year: ${currentYear}`);
+    
+    // Generate options for the current month and 3 months before/after
     for (let i = -2; i <= 3; i++) {
       const date = new Date(currentYear, currentMonth + i, 1);
-      const value = date.toISOString().slice(0, 7);
+      const value = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
       const label = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       
       console.log(`Month option (main page): ${label}, value: ${value}`);

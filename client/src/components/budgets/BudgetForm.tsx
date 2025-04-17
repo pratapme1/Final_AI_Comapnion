@@ -99,12 +99,18 @@ const BudgetForm = ({ budgetId, onComplete }: BudgetFormProps) => {
   const budgetToEdit = budgets?.find((budget: any) => budget.id === budgetId);
 
   // Set up form with default values
+  // Use today's date to determine the current month in yyyy-MM format
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  const currentMonthString = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}`;
+  
   const form = useForm<BudgetFormValues>({
     resolver: zodResolver(budgetFormSchema),
     defaultValues: {
       category: "",
       limit: "5000",
-      month: new Date().toISOString().slice(0, 7),
+      month: currentMonthString, // Use our explicitly formatted current month
     },
   });
 
