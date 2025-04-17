@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { Toaster } from "./components/ui/toaster";
 import Dashboard from "./pages/Dashboard";
 import Budgets from "./pages/Budgets";
@@ -30,7 +30,12 @@ function SplashScreen() {
 function Router() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const { isLoading } = useAuth();
+  const { isLoading, user } = useAuth();
+  // Get current location path
+  const [location] = useLocation();
+  
+  // Check if current page is auth page
+  const isAuthPage = location && location === '/auth';
 
   // Hide splash screen after initial load
   useEffect(() => {
@@ -62,7 +67,24 @@ function Router() {
   if (isInitialLoad && isLoading) {
     return <SplashScreen />;
   }
+  
+  // For auth page, render with a clean layout (no sidebar or header)
+  if (isAuthPage) {
+    return (
+      <div className="min-h-screen w-full bg-white">
+        <Suspense fallback={
+          <div className="flex items-center justify-center min-h-screen">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        }>
+          <AuthPage />
+        </Suspense>
+        <Toaster />
+      </div>
+    );
+  }
 
+  // For all other pages (protected routes), render with sidebar and header
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar for desktop */}
@@ -86,7 +108,6 @@ function Router() {
               <ProtectedRoute path="/receipts" component={Receipts} />
               <ProtectedRoute path="/analytics" component={Analytics} />
               <ProtectedRoute path="/insights" component={Insights} />
-              <Route path="/auth" component={AuthPage} />
               <Route component={NotFound} />
             </Switch>
           </Suspense>
