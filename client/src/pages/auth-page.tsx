@@ -424,32 +424,7 @@ const AuthPage = () => {
                 AI-Powered<br />Financial Insights
               </h1>
               
-              <ul className="space-y-4 mb-8">
-                <li className="flex items-start bg-white/10 backdrop-blur-sm rounded-lg p-3">
-                  <svg className="h-6 w-6 mr-3 flex-shrink-0 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="font-medium">Smart categorization of your expenses</span>
-                </li>
-                <li className="flex items-start bg-white/10 backdrop-blur-sm rounded-lg p-3">
-                  <svg className="h-6 w-6 mr-3 flex-shrink-0 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="font-medium">Detect recurring expenses automatically</span>
-                </li>
-                <li className="flex items-start bg-white/10 backdrop-blur-sm rounded-lg p-3">
-                  <svg className="h-6 w-6 mr-3 flex-shrink-0 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="font-medium">Get personalized saving suggestions</span>
-                </li>
-                <li className="flex items-start bg-white/10 backdrop-blur-sm rounded-lg p-3">
-                  <svg className="h-6 w-6 mr-3 flex-shrink-0 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="font-medium">Weekly financial digests to optimize spending</span>
-                </li>
-              </ul>
+              <div className="mb-8"></div>
               
               <p className="text-white/80 font-medium border-l-4 border-white/30 pl-4">
                 Smart Ledger helps you track, analyze, and optimize your finances with AI-powered insights that work for you.
