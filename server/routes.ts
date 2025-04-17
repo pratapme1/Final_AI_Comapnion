@@ -390,10 +390,13 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
           }
         });
         
-        // Find the most common category
+        // Find the most common category (excluding "Others")
         let maxCount = 0;
         Object.entries(categoryCounts).forEach(([category, count]) => {
-          if (count > maxCount) {
+          // Prioritize actual categories over "Others"
+          if ((category !== "Others" && count > maxCount) || 
+              (category !== "Others" && count === maxCount) || 
+              (category === "Others" && count > maxCount && !receiptCategory)) {
             maxCount = count;
             receiptCategory = category;
           }
@@ -571,13 +574,23 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
       // Process items in batches for categorization
       const itemsWithCategories = await categorizeItems(items);
       
+      // Keep track of user-defined categories vs. AI-suggested ones
+      const categoryChanges: Record<string, number> = {};
+      const receiptCategory = receipt.category || "Others";
+      
       // Process each item in the receipt
-      for (let i = 0; i < itemsWithCategories.length; i++) {
+      for (let i = 0; i < itemsWithCategories.length && i < items.length; i++) {
         const item = itemsWithCategories[i];
         
-        // Apply category if detected
-        if (item.category) {
+        // Apply category if detected and it's not the default "Others"
+        if (item.category && item.category !== "Others") {
           await storage.updateReceiptItem(receiptId, i, { category: item.category });
+          
+          // Track category changes for potential receipt category updates
+          categoryChanges[item.category] = (categoryChanges[item.category] || 0) + 1;
+        } else if (receiptCategory && receiptCategory !== "Others") {
+          // Apply receipt-level category if no specific category detected
+          await storage.updateReceiptItem(receiptId, i, { category: receiptCategory });
         }
         
         // Detect recurring items

@@ -27,9 +27,15 @@ export async function categorizeItems(items: ReceiptItem[]): Promise<ReceiptItem
     for (let i = 0; i < items.length; i += batchSize) {
       const batch = items.slice(i, i + batchSize);
 
-      // Create prompt for batch
+      // Create prompt for batch with enhanced instructions
       const prompt = `
         Categorize each item into one of these categories: ${categories.join(", ")}.
+        Only use "Others" as a last resort - try to assign the most specific category possible.
+        Consider the context of each item. For example:
+        - "Milk", "Bread", "Vegetables" would be "Groceries"
+        - "Restaurant", "Cafe", "Pizza" would be "Dining"
+        - "Gas", "Taxi", "Bus ticket" would be "Transportation"
+        
         Return the answer as a JSON array with each item having a "name", "price", and "category" property.
         For example: [{"name": "Apple", "price": 1.99, "category": "Groceries"}]
 
@@ -54,7 +60,16 @@ export async function categorizeItems(items: ReceiptItem[]): Promise<ReceiptItem
         const categorizedItems = Array.isArray(parsed) ? parsed : (parsed.items || []);
         
         if (Array.isArray(categorizedItems)) {
-          result.push(...categorizedItems);
+          // Process each item to ensure meaningful categories
+          const processedItems = categorizedItems.map(item => ({
+            ...item,
+            // Only keep valid categories from our predefined list
+            category: categories.includes(item.category) ? item.category : 
+                     (item.category === "Other" ? "Others" : // Fix common mistake
+                     (item.category === "Grocery" ? "Groceries" : // Fix common mistake  
+                     (categories.find(c => c.toLowerCase() === item.category?.toLowerCase()) || "Others")))
+          }));
+          result.push(...processedItems);
         } else {
           console.warn("Unexpected categorizedItems format:", categorizedItems);
         }
@@ -63,10 +78,29 @@ export async function categorizeItems(items: ReceiptItem[]): Promise<ReceiptItem
       }
     }
 
-    return result.length > 0 ? result : items.map(item => ({
-      ...item,
-      category: item.category || "Others" // Set default category if none was assigned
-    }));
+    // Preserve any existing non-"Others" categories in the original items
+    return items.map((originalItem, index) => {
+      const aiItem = result[index];
+      
+      // If original item already has a specific category other than "Others", keep it
+      if (originalItem.category && originalItem.category !== "Others") {
+        return originalItem;
+      }
+      
+      // If AI categorized this item with something other than "Others", use that
+      if (aiItem && aiItem.category && aiItem.category !== "Others") {
+        return {
+          ...originalItem,
+          category: aiItem.category
+        };
+      }
+      
+      // Default to "Others" if no better category is found
+      return {
+        ...originalItem,
+        category: originalItem.category || "Others"
+      };
+    });
   } catch (error) {
     console.error("Error categorizing items:", error);
     // Return original items with default category

@@ -269,7 +269,25 @@ const ReceiptUpload = () => {
                     <FormLabel>Category</FormLabel>
                     <Select
                       value={field.value}
-                      onValueChange={field.onChange}
+                      onValueChange={(value) => {
+                        // First update the receipt category
+                        field.onChange(value);
+                        
+                        // Then update all item categories that haven't been explicitly modified
+                        const items = form.getValues("items");
+                        const defaultCategory = form.getValues("category") || "Others";
+                        
+                        // Update items that haven't been explicitly changed from default/receipt category
+                        const updatedItems = items.map(item => {
+                          // If item category matches the previous default, update it to new default
+                          if (item.category === defaultCategory || item.category === "Others") {
+                            return { ...item, category: value };
+                          }
+                          return item;
+                        });
+                        
+                        form.setValue("items", updatedItems);
+                      }}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -366,7 +384,6 @@ const ReceiptUpload = () => {
                           <Select
                             value={field.value}
                             onValueChange={field.onChange}
-                            defaultValue={form.getValues("category") || "Others"}
                           >
                             <FormControl>
                               <SelectTrigger className="w-full">
