@@ -233,7 +233,13 @@ const Budgets = () => {
                 <div className="py-4">
                   <p className="text-center text-gray-500 mb-4">No active budgets for this month yet</p>
                   <Button 
-                    onClick={toggleForm} 
+                    onClick={() => {
+                      console.log("Create first budget button clicked");
+                      // Force scroll to top of page
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                      // Show the form
+                      setShowForm(true);
+                    }}
                     className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200"
                     variant="outline"
                   >
