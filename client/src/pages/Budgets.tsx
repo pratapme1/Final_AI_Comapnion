@@ -13,9 +13,14 @@ import { motion } from "framer-motion";
 const Budgets = () => {
   const [showForm, setShowForm] = useState(false);
   const [selectedBudgetId, setSelectedBudgetId] = useState<number | null>(null);
-  const [activeMonth, setActiveMonth] = useState<string>(
-    new Date().toISOString().slice(0, 7)
-  );
+  
+  // Set initial active month explicitly using the actual current date
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  const currentMonthString = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}`;
+  
+  const [activeMonth, setActiveMonth] = useState<string>(currentMonthString);
   
   // Fetch budget and spending data with improved refetch settings
   const { data: budgets = [] } = useQuery<any[]>({
@@ -50,12 +55,7 @@ const Budgets = () => {
     refetchInterval: 2000,
   });
 
-  // Set default tab to current month
-  useEffect(() => {
-    const today = new Date();
-    const currentMonthValue = today.toISOString().slice(0, 7);
-    setActiveMonth(currentMonthValue);
-  }, []);
+  // Current month is already set in state initialization
 
   const toggleForm = () => {
     setShowForm(!showForm);
@@ -77,12 +77,16 @@ const Budgets = () => {
   const getMonthOptions = () => {
     const options = [];
     const today = new Date();
+    // Using actual current date, not 2025
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
     
     for (let i = -2; i <= 3; i++) {
-      const date = new Date(today.getFullYear(), today.getMonth() + i, 1);
+      const date = new Date(currentYear, currentMonth + i, 1);
       const value = date.toISOString().slice(0, 7);
       const label = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       
+      console.log(`Month option (main page): ${label}, value: ${value}`);
       options.push({ value, label });
     }
     

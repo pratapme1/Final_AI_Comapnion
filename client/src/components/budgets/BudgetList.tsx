@@ -225,7 +225,10 @@ const BudgetList = ({ month, onEditBudget }: BudgetListProps) => {
         
         {isCurrentMonth && (
           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 px-3 py-1">
-            <CalendarIndicator daysLeft={daysLeftInMonth} />
+            <div className="flex items-center gap-1">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>{daysLeftInMonth} days left</span>
+            </div>
           </Badge>
         )}
       </div>

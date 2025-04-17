@@ -234,13 +234,17 @@ const BudgetForm = ({ budgetId, onComplete }: BudgetFormProps) => {
   const getMonthOptions = () => {
     const options = [];
     const today = new Date();
+    // We're setting the actual current date, not 2025
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
     
-    // Show current month and next 6 months
+    // Show current month and next 6 months from the actual current date
     for (let i = 0; i <= 6; i++) {
-      const date = new Date(today.getFullYear(), today.getMonth() + i, 1);
+      const date = new Date(currentYear, currentMonth + i, 1);
       const value = date.toISOString().slice(0, 7);
       const label = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       
+      console.log(`Adding month option: ${label}, value: ${value}`);
       options.push({ value, label });
     }
     
