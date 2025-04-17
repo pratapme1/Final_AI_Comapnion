@@ -60,11 +60,27 @@ export function setupAuth(app: Express) {
 
   passport.use(
     new LocalStrategy(async (username, password, done) => {
-      const user = await storage.getUserByUsername(username);
-      if (!user || !(await comparePasswords(password, user.password))) {
-        return done(null, false);
-      } else {
+      try {
+        // Make username case-insensitive
+        const normalizedUsername = username.toLowerCase();
+        const user = await storage.getUserByUsername(normalizedUsername);
+        
+        if (!user) {
+          console.log(`User not found: ${normalizedUsername}`);
+          return done(null, false);
+        }
+        
+        const passwordValid = await comparePasswords(password, user.password);
+        if (!passwordValid) {
+          console.log(`Invalid password for user: ${normalizedUsername}`);
+          return done(null, false);
+        }
+        
+        console.log(`Authentication successful for: ${normalizedUsername}`);
         return done(null, user);
+      } catch (error) {
+        console.error("Authentication error:", error);
+        return done(error);
       }
     }),
   );
@@ -76,24 +92,55 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/register", async (req, res, next) => {
-    const existingUser = await storage.getUserByUsername(req.body.username);
-    if (existingUser) {
-      return res.status(400).send("Username already exists");
+    try {
+      // Normalize username to lowercase for case-insensitive comparison
+      const normalizedUsername = req.body.username.toLowerCase();
+      
+      // Check if the username already exists (case-insensitive)
+      const existingUser = await storage.getUserByUsername(normalizedUsername);
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+
+      // Create the user with normalized username
+      const user = await storage.createUser({
+        ...req.body,
+        username: normalizedUsername,
+        password: await hashPassword(req.body.password),
+      });
+
+      // Log in the user after successful registration
+      req.login(user, (err) => {
+        if (err) return next(err);
+        res.status(201).json(user);
+      });
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Registration failed" });
     }
-
-    const user = await storage.createUser({
-      ...req.body,
-      password: await hashPassword(req.body.password),
-    });
-
-    req.login(user, (err) => {
-      if (err) return next(err);
-      res.status(201).json(user);
-    });
   });
 
-  app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json(req.user);
+  app.post("/api/login", (req, res, next) => {
+    passport.authenticate("local", (err, user, info) => {
+      if (err) {
+        console.error("Login error:", err);
+        return res.status(500).json({ message: "Internal server error during login" });
+      }
+      
+      if (!user) {
+        return res.status(401).json({ message: "Invalid username or password" });
+      }
+      
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error("Session login error:", loginErr);
+          return res.status(500).json({ message: "Failed to establish session" });
+        }
+        
+        console.log("Login successful for user:", user.username);
+        return res.status(200).json(user);
+      });
+    })(req, res, next);
   });
 
   app.post("/api/logout", (req, res, next) => {

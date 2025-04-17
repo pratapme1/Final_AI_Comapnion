@@ -50,7 +50,14 @@ const AuthPage = () => {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const onLogin = (data: LoginFormValues) => {
-    loginMutation.mutate(data, {
+    // Convert username to lowercase to ensure case insensitivity
+    const normalizedData = {
+      ...data,
+      username: data.username.toLowerCase()
+    };
+    
+    console.log("Attempting login with:", normalizedData);
+    loginMutation.mutate(normalizedData, {
       onSuccess: () => {
         toast({
           title: "Success",
@@ -58,12 +65,43 @@ const AuthPage = () => {
           variant: "default",
         });
         setLocation('/');
+      },
+      onError: (error) => {
+        console.error("Login error:", error);
+        toast({
+          title: "Login Failed",
+          description: "Invalid username or password. Please try again.",
+          variant: "destructive",
+        });
       }
     });
   };
 
   const onRegister = (data: RegisterFormValues) => {
-    registerMutation.mutate(data);
+    // Convert username to lowercase to ensure case insensitivity
+    const normalizedData = {
+      ...data,
+      username: data.username.toLowerCase()
+    };
+    
+    registerMutation.mutate(normalizedData, {
+      onSuccess: () => {
+        toast({
+          title: "Success",
+          description: "Account created successfully! You are now logged in.",
+          variant: "default",
+        });
+        setLocation('/');
+      },
+      onError: (error) => {
+        console.error("Registration error:", error);
+        toast({
+          title: "Registration Failed",
+          description: error.message || "Unable to create account. Please try a different username.",
+          variant: "destructive",
+        });
+      }
+    });
   };
 
   // Redirect if already logged in
