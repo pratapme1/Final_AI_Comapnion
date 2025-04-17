@@ -80,18 +80,18 @@ const BudgetForm = ({ budgetId, onComplete }: BudgetFormProps) => {
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   // Fetch categories for dropdown
-  const { data: categories } = useQuery({
+  const { data: categories = [] } = useQuery<any[]>({
     queryKey: ['/api/categories'],
   });
 
   // Fetch budget data if in edit mode
-  const { data: budgets } = useQuery({
+  const { data: budgets = [] } = useQuery<any[]>({
     queryKey: ['/api/budgets'],
     enabled: isEditMode,
   });
 
   // Fetch spending data for recommendations
-  const { data: categorySpending } = useQuery({
+  const { data: categorySpending = [] } = useQuery<any[]>({
     queryKey: ['/api/stats/category-spending'],
   });
 

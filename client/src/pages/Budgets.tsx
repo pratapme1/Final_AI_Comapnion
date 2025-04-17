@@ -18,19 +18,19 @@ const Budgets = () => {
   );
   
   // Fetch budget and spending data
-  const { data: budgets = [] } = useQuery({
+  const { data: budgets = [] } = useQuery<any[]>({
     queryKey: ['/api/budgets'],
   });
   
-  const { data: budgetStatuses = [] } = useQuery({
+  const { data: budgetStatuses = [] } = useQuery<any[]>({
     queryKey: ['/api/stats/budget-status'],
   });
   
-  const { data: spendingData } = useQuery({
+  const { data: spendingData = [] } = useQuery<any[]>({
     queryKey: ['/api/stats/category-spending'],
   });
   
-  const { data: stats } = useQuery({
+  const { data: stats = {} } = useQuery<any>({
     queryKey: ['/api/stats'],
   });
 

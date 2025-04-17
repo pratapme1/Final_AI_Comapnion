@@ -47,12 +47,12 @@ const BudgetList = ({ month, onEditBudget }: BudgetListProps) => {
   const [expandedBudget, setExpandedBudget] = useState<number | null>(null);
 
   // Fetch budgets for the specified month
-  const { data: budgets = [], isLoading } = useQuery({
+  const { data: budgets = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/budgets', { month }],
   });
 
   // Fetch budget statuses for progress tracking
-  const { data: budgetStatuses = [], isLoading: statusesLoading } = useQuery({
+  const { data: budgetStatuses = [], isLoading: statusesLoading } = useQuery<any[]>({
     queryKey: ['/api/stats/budget-status'],
   });
 
@@ -98,7 +98,7 @@ const BudgetList = ({ month, onEditBudget }: BudgetListProps) => {
 
   // Merge budget data with status data
   const getBudgetWithStatus = (budget: any) => {
-    if (!budgetStatuses) return null;
+    if (!budgetStatuses || !Array.isArray(budgetStatuses)) return null;
     
     return budgetStatuses.find(
       (status: any) => status.category === budget.category
