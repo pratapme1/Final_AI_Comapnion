@@ -11,6 +11,8 @@ import Sidebar from "./components/layout/Sidebar";
 import MobileHeader from "./components/layout/MobileHeader";
 import { useState, useEffect, Suspense, lazy } from "react";
 import { AuthProvider, useAuth } from "./hooks/use-auth";
+import { BudgetProvider } from "./hooks/use-budget-data";
+import { ReceiptProvider } from "./hooks/use-receipt-data";
 import { ProtectedRoute } from "./lib/protected-route";
 import { Loader2 } from "lucide-react";
 
@@ -131,7 +133,16 @@ function Router() {
 function App() {
   return (
     <AuthProvider>
-      <Router />
+      {/* 
+      TODO: Implement these providers after finishing their implementation
+      <BudgetProvider>
+        <ReceiptProvider>
+      */}
+        <Router />
+      {/*
+        </ReceiptProvider>
+      </BudgetProvider>
+      */}
     </AuthProvider>
   );
 }

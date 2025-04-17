@@ -516,10 +516,20 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
       
       const userId = receipt.userId;
       
+      // Process items in batches for categorization
+      const itemsWithCategories = await categorizeItems(items);
+      
       // Process each item in the receipt
-      for (let i = 0; i < items.length; i++) {
+      for (let i = 0; i < itemsWithCategories.length; i++) {
+        const item = itemsWithCategories[i];
+        
+        // Apply category if detected
+        if (item.category) {
+          await storage.updateReceiptItem(receiptId, i, { category: item.category });
+        }
+        
         // Detect recurring items
-        const isRecurring = await detectRecurring(items[i].name);
+        const isRecurring = await detectRecurring(item.name);
         
         if (isRecurring) {
           await storage.updateReceiptItem(receiptId, i, { recurring: true });
@@ -527,7 +537,7 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
           // Create insight for recurring item
           await storage.createInsight({
             userId,
-            content: `${items[i].name} appears to be a recurring expense. Consider reviewing this subscription.`,
+            content: `${item.name} appears to be a recurring expense. Consider reviewing this subscription.`,
             type: 'recurring',
             date: new Date(),
             read: false,
