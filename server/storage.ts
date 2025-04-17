@@ -252,7 +252,13 @@ export class MemStorage implements IStorage {
   
   async createReceipt(insertReceipt: InsertReceipt): Promise<Receipt> {
     const id = this.currentReceiptId++;
-    const receipt: Receipt = { ...insertReceipt, id };
+    // Ensure category is present, use default if not provided
+    const category = insertReceipt.category || "Others";
+    const receipt: Receipt = { 
+      ...insertReceipt, 
+      id,
+      category 
+    };
     this.receipts.set(id, receipt);
     return receipt;
   }
@@ -610,10 +616,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createReceipt(receipt: InsertReceipt): Promise<Receipt> {
-    // Convert number to string for total
+    // Convert number to string for total and ensure category is present
     const dbReceipt = {
       ...receipt,
-      total: receipt.total.toString()
+      total: receipt.total.toString(),
+      category: receipt.category || "Others" // Ensure category is always set
     };
     const [createdReceipt] = await db.insert(receipts).values(dbReceipt).returning();
     return createdReceipt;

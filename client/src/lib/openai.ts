@@ -135,7 +135,11 @@ export async function processReceiptImage(base64Image: string): Promise<{
       merchantName: data.merchantName || '',
       date: data.date || new Date(),
       total: data.total || 0,
-      items: Array.isArray(data.items) ? data.items : []
+      category: data.category || 'Others',
+      items: Array.isArray(data.items) ? data.items.map((item: any) => ({
+        ...item,
+        category: item.category || data.category || 'Others'
+      })) : []
     };
   } catch (error) {
     console.error("Error processing receipt image:", error);
