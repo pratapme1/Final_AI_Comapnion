@@ -420,14 +420,10 @@ const AuthPage = () => {
                 <h2 className="text-2xl font-bold">Smart Ledger</h2>
               </div>
             
-              <h1 className="text-3xl md:text-4xl font-bold mb-6 leading-tight">
-                AI-Powered<br />Financial Insights
-              </h1>
-              
               <div className="mb-8"></div>
               
               <p className="text-white/80 font-medium border-l-4 border-white/30 pl-4">
-                Smart Ledger helps you track, analyze, and optimize your finances with AI-powered insights that work for you.
+                Smart Ledger helps you track, analyze, and optimize your finances.
               </p>
             </div>
           </div>
