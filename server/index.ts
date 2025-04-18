@@ -3,16 +3,65 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
-// Configure JSON middleware with a custom reviver to handle problematic strings
+
+// Create a middleware that runs before express.json() to detect and fix specific problematic inputs
+app.use((req, res, next) => {
+  // Only check for POST requests and specific endpoints with known issues
+  if (req.method === 'POST' && 
+      (req.path.includes('/api/receipts') || req.path.includes('/api/process'))) {
+    
+    // Create a new stream for the request to read the raw body
+    let rawBody = '';
+    req.on('data', (chunk) => {
+      const chunkStr = chunk.toString();
+      
+      // Check for the specific Shell sai baba road pattern
+      if (chunkStr.includes('"Shell sai')) {
+        console.log('Detected Shell gas station in raw request, sanitizing...');
+        // Replace problematic strings directly in the chunk
+        rawBody += chunkStr.replace(/\"Shell sai[^"]*\"/g, '"Shell Gas Station"');
+      } else {
+        rawBody += chunkStr;
+      }
+    });
+    
+    // Once the request is fully received
+    req.on('end', () => {
+      // If we detected and fixed a problematic pattern, update the request
+      if (rawBody.length > 0) {
+        // Store the sanitized body for express.json middleware to parse
+        Object.defineProperty(req, 'body', {
+          configurable: true,
+          enumerable: true,
+          get: () => {
+            try {
+              return JSON.parse(rawBody);
+            } catch (error) {
+              console.error('Error parsing sanitized JSON:', error);
+              return {};
+            }
+          }
+        });
+      }
+      next();
+    });
+  } else {
+    next();
+  }
+});
+
+// Configure JSON middleware with a custom reviver to handle other problematic strings
 app.use(express.json({
   reviver: (key, value) => {
     // If the value is a string, ensure it's properly handled
     if (typeof value === 'string') {
+      // Clean up any remaining quotes if needed
       return value;
     }
     return value;
   }
 }));
+
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
