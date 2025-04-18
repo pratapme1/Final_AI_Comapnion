@@ -1,5 +1,6 @@
 import OpenAI from "openai";
-import type { ReceiptItem, Receipt, InsertInsight } from "@shared/schema";
+import type { ReceiptItem } from "@shared/schema";
+import type { Receipt } from "@shared/schema";
 import { enhancedCurrencyDetection, calculateSubtotal } from "./currencyDetection";
 
 // Initialize OpenAI client
@@ -168,87 +169,26 @@ export async function detectRecurring(itemName: string): Promise<boolean> {
 }
 
 /**
- * Generate an enhanced insight for a receipt
- * @param receipt Receipt to analyze
- * @param previousReceipts Optional previous receipts for comparison
- * @returns Insight content
+ * Generate an insight for a receipt
  */
-export async function generateInsight(receipt: Receipt, previousReceipts: Receipt[] = []): Promise<string | null> {
+export async function generateInsight(receipt: Receipt): Promise<string | null> {
   try {
-    // Find similar previous receipts from the same merchant
-    const similarReceipts = previousReceipts
-      .filter(r => r.merchantName.toLowerCase() === receipt.merchantName.toLowerCase())
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Most recent first
-    
-    // Calculate spending trend for this merchant
-    let spendingTrend = "";
-    if (similarReceipts.length > 0) {
-      const previousTotal = Number(similarReceipts[0].total);
-      const currentTotal = Number(receipt.total);
-      const difference = currentTotal - previousTotal;
-      const percentChange = previousTotal > 0 ? (difference / previousTotal) * 100 : 0;
-      
-      if (Math.abs(percentChange) > 15) {
-        spendingTrend = `Compared to your last visit, you spent ${percentChange > 0 ? 'more' : 'less'} this time (${Math.abs(percentChange).toFixed(1)}% ${percentChange > 0 ? 'increase' : 'decrease'}).`;
-      }
-    }
-    
-    // Check if receipt contains any recurring subscription items
-    const potentialSubscriptions = [];
-    for (const item of receipt.items) {
-      const isRecurring = await detectRecurring(item.name);
-      if (isRecurring) {
-        potentialSubscriptions.push(item);
-      }
-    }
-    
-    // Get potential savings suggestions for top items by price
-    const topItems = [...receipt.items].sort((a, b) => b.price - a.price).slice(0, 2);
-    const savingsSuggestions = [];
-    
-    for (const item of topItems) {
-      if (item.price > 100) { // Only suggest savings for higher-priced items
-        const suggestion = await generateSavingsSuggestion(item.name, item.price);
-        if (suggestion) {
-          savingsSuggestions.push({
-            item: item.name,
-            suggestion
-          });
-        }
-      }
-    }
-    
-    // Create a detailed context for the insight generation
     const prompt = `
-      Analyze this receipt and provide a personalized financial insight:
+      Analyze this receipt and provide a financial insight or advice:
 
       Store: ${receipt.merchantName}
       Date: ${new Date(receipt.date).toLocaleDateString()}
       Total: ₹${receipt.total}
       Items: ${JSON.stringify(receipt.items.map(item => `${item.name}: ₹${item.price}`))}
-      
-      Additional Context:
-      ${spendingTrend ? `Spending Trend: ${spendingTrend}` : ''}
-      ${potentialSubscriptions.length > 0 ? `Potential Subscriptions: ${potentialSubscriptions.map(item => item.name).join(', ')}` : ''}
-      ${savingsSuggestions.length > 0 ? `Savings Opportunities: ${savingsSuggestions.map(s => `${s.item} - ${s.suggestion}`).join('\n')}` : ''}
-      
-      Previous visits to this merchant: ${similarReceipts.length}
 
-      Generate a specific, actionable financial insight based on this purchase.
-      Focus on one of these aspects:
-      1. Spending patterns or anomalies
-      2. Potential savings opportunities
-      3. Subscription management if applicable
-      4. Budgeting advice related to this purchase category
-      
-      Keep it to 2-3 sentences and make it personalized, insightful, and actionable.
-      Don't be generic - provide specific advice that would be valuable to the user.
+      Give a specific, actionable financial insight based on this purchase.
+      Keep it to 1-2 sentences and make it specific to this purchase.
     `;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 200
+      max_tokens: 150
     });
 
     return response.choices[0].message.content;
@@ -259,426 +199,11 @@ export async function generateInsight(receipt: Receipt, previousReceipts: Receip
 }
 
 /**
- * Generate advanced insights based on user's spending history
- * @param receipts User's receipts
- * @returns List of insights
- */
-export async function generateAdvancedInsights(userId: number, receipts: Receipt[]): Promise<InsertInsight[]> {
-  try {
-    if (receipts.length === 0) {
-      return [];
-    }
-
-    const insights: InsertInsight[] = [];
-    const today = new Date();
-    
-    // Analyze spending patterns
-    const patterns = await analyzeSpendingPatterns(receipts);
-    
-    // Generate insights based on spending patterns
-    if (patterns.unusualSpending.length > 0) {
-      const unusualSpendingItem = patterns.unusualSpending[0];
-      const prompt = `
-        I notice your ${unusualSpendingItem.category} spending has increased by ${unusualSpendingItem.percentageChange}% recently.
-        Provide a helpful, conversational insight about this change with a specific saving suggestion.
-        Keep it brief (2-3 sentences) and actionable.
-      `;
-      
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 150
-      });
-      
-      if (response.choices[0].message.content) {
-        insights.push({
-          userId,
-          content: response.choices[0].message.content,
-          type: 'spending-alert',
-          date: today,
-          read: false,
-          relatedItemId: null
-        });
-      }
-    }
-    
-    // Check for potential recurring expenses
-    const recurringExpenses = await detectRecurringExpenses(receipts);
-    
-    if (recurringExpenses.length > 0) {
-      // Pick the most significant recurring expense
-      const significantExpense = recurringExpenses[0];
-      
-      const prompt = `
-        You have a recurring ${significantExpense.frequency.toLowerCase()} expense of ₹${significantExpense.amount.toFixed(2)} 
-        at ${significantExpense.merchantName} in the ${significantExpense.category} category.
-        
-        Generate a brief insight about managing this recurring expense with a specific tip to optimize it.
-        Keep it conversational and helpful (2-3 sentences).
-      `;
-      
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 150
-      });
-      
-      if (response.choices[0].message.content) {
-        insights.push({
-          userId,
-          content: response.choices[0].message.content,
-          type: 'recurring',
-          date: today,
-          read: false,
-          relatedItemId: null
-        });
-      }
-    }
-    
-    // Generate a saving opportunity insight based on top spending category
-    if (patterns.categoryTrends.length > 0) {
-      const topCategory = patterns.categoryTrends[0];
-      
-      const prompt = `
-        Your highest spending category is ${topCategory.category} and it's ${topCategory.trend}.
-        
-        Provide a money-saving tip specifically for the ${topCategory.category} category.
-        Make it specific, actionable, and brief (2-3 sentences).
-      `;
-      
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 150
-      });
-      
-      if (response.choices[0].message.content) {
-        insights.push({
-          userId,
-          content: response.choices[0].message.content,
-          type: 'saving',
-          date: today,
-          read: false,
-          relatedItemId: null
-        });
-      }
-    }
-    
-    return insights;
-    
-  } catch (error) {
-    console.error("Error generating advanced insights:", error);
-    return [];
-  }
-}
-
-/**
  * Generate a weekly financial digest
- */
-/**
- * Analyze spending patterns from receipt history
- * @param receipts List of user receipts to analyze
- * @returns Object with detected spending patterns
- */
-export async function analyzeSpendingPatterns(receipts: Receipt[]): Promise<{
-  patterns: string[];
-  frequentMerchants: {name: string, count: number, total: number}[];
-  categoryTrends: {category: string, trend: 'increasing' | 'decreasing' | 'stable', percentage: number}[];
-  unusualSpending: {category: string, amount: number, percentageChange: number}[];
-}> {
-  try {
-    if (!receipts.length) {
-      return { 
-        patterns: [], 
-        frequentMerchants: [], 
-        categoryTrends: [],
-        unusualSpending: []
-      };
-    }
-
-    // Extract data for analysis
-    const merchantCounts: Record<string, {count: number, total: number}> = {};
-    const categorySpendings: Record<string, number[]> = {};
-    const monthlyTotals: Record<string, number> = {};
-    
-    // Sort receipts by date (oldest first)
-    const sortedReceipts = [...receipts].sort((a, b) => 
-      new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-    
-    // Process receipt data
-    sortedReceipts.forEach(receipt => {
-      // Track merchant frequencies and totals
-      const merchant = receipt.merchantName;
-      if (!merchantCounts[merchant]) {
-        merchantCounts[merchant] = { count: 0, total: 0 };
-      }
-      merchantCounts[merchant].count++;
-      merchantCounts[merchant].total += Number(receipt.total);
-      
-      // Track spending by category monthly
-      const month = new Date(receipt.date).toISOString().substring(0, 7); // YYYY-MM format
-      if (!monthlyTotals[month]) {
-        monthlyTotals[month] = 0;
-      }
-      monthlyTotals[month] += Number(receipt.total);
-      
-      // Track category spending over time
-      receipt.items.forEach(item => {
-        const category = item.category || 'Others';
-        if (!categorySpendings[category]) {
-          categorySpendings[category] = [];
-        }
-        // If this month already exists, add to it; otherwise push a new entry
-        categorySpendings[category].push(item.price);
-      });
-    });
-    
-    // Identify frequent merchants (more than 1 visit)
-    const frequentMerchants = Object.entries(merchantCounts)
-      .filter(([_, data]) => data.count > 1)
-      .map(([name, data]) => ({ 
-        name, 
-        count: data.count, 
-        total: data.total 
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-    
-    // Analyze category trends
-    const categoryTrends: {category: string, trend: 'increasing' | 'decreasing' | 'stable', percentage: number}[] = [];
-    
-    Object.entries(categorySpendings).forEach(([category, amounts]) => {
-      if (amounts.length < 2) return; // Need at least 2 data points
-      
-      // Calculate trend (simple comparison of first half vs second half)
-      const mid = Math.floor(amounts.length / 2);
-      const firstHalf = amounts.slice(0, mid);
-      const secondHalf = amounts.slice(mid);
-      
-      const firstHalfAvg = firstHalf.reduce((sum, amt) => sum + amt, 0) / firstHalf.length;
-      const secondHalfAvg = secondHalf.reduce((sum, amt) => sum + amt, 0) / secondHalf.length;
-      
-      let trend: 'increasing' | 'decreasing' | 'stable';
-      let percentage = 0;
-      
-      if (firstHalfAvg === 0) {
-        trend = 'increasing';
-        percentage = 100; // Avoid division by zero
-      } else {
-        percentage = Math.round(((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100);
-        
-        if (percentage > 10) {
-          trend = 'increasing';
-        } else if (percentage < -10) {
-          trend = 'decreasing';
-        } else {
-          trend = 'stable';
-        }
-      }
-      
-      categoryTrends.push({ category, trend, percentage: Math.abs(percentage) });
-    });
-    
-    // Sort by most significant changes
-    categoryTrends.sort((a, b) => b.percentage - a.percentage);
-    
-    // Identify unusual spending (significant increases)
-    const unusualSpending = categoryTrends
-      .filter(item => item.trend === 'increasing' && item.percentage > 30)
-      .map(item => {
-        const amounts = categorySpendings[item.category];
-        return {
-          category: item.category,
-          amount: amounts[amounts.length - 1], // Most recent amount
-          percentageChange: item.percentage
-        };
-      });
-    
-    // Generate simple patterns list
-    const patterns: string[] = [];
-    
-    if (frequentMerchants.length > 0) {
-      const topMerchant = frequentMerchants[0];
-      // Escape special characters in merchant name
-      const merchantName = topMerchant.name.replace(/"/g, '\\"');
-      patterns.push(`You've visited ${merchantName} ${topMerchant.count} times, spending a total of ₹${topMerchant.total.toFixed(2)}.`);
-    }
-    
-    categoryTrends.slice(0, 2).forEach(trend => {
-      // Escape category name
-      const categoryName = trend.category.replace(/"/g, '\\"');
-      patterns.push(`${categoryName} spending has been ${trend.trend} by ${trend.percentage}%.`);
-    });
-    
-    // Get months with spending data
-    const months = Object.keys(monthlyTotals).sort();
-    if (months.length >= 2) {
-      const lastMonth = months[months.length - 1];
-      const prevMonth = months[months.length - 2];
-      const change = ((monthlyTotals[lastMonth] - monthlyTotals[prevMonth]) / monthlyTotals[prevMonth]) * 100;
-      
-      if (Math.abs(change) > 10) {
-        patterns.push(`Your monthly spending ${change > 0 ? 'increased' : 'decreased'} by ${Math.abs(change).toFixed(1)}% compared to the previous month.`);
-      }
-    }
-    
-    return {
-      patterns,
-      frequentMerchants,
-      categoryTrends,
-      unusualSpending
-    };
-    
-  } catch (error) {
-    console.error("Error analyzing spending patterns:", error);
-    return { 
-      patterns: ["Unable to analyze spending patterns due to an error."], 
-      frequentMerchants: [], 
-      categoryTrends: [],
-      unusualSpending: []
-    };
-  }
-}
-
-/**
- * Detect recurring expenses from receipt data
- * @param receipts List of receipts to analyze
- * @returns List of detected recurring expenses
- */
-export async function detectRecurringExpenses(receipts: Receipt[]): Promise<{
-  merchantName: string;
-  amount: number;
-  frequency: string;
-  lastSeen: Date;
-  category: string;
-}[]> {
-  try {
-    if (receipts.length < 2) {
-      return [];
-    }
-
-    // Build map of merchants
-    const merchantData: Record<string, {
-      dates: Date[];
-      amounts: number[];
-      categories: string[];
-    }> = {};
-
-    // Process all receipts
-    receipts.forEach(receipt => {
-      const merchant = receipt.merchantName;
-      const date = new Date(receipt.date);
-      const amount = Number(receipt.total);
-      const category = receipt.category || 'Others';
-      
-      if (!merchantData[merchant]) {
-        merchantData[merchant] = {
-          dates: [],
-          amounts: [],
-          categories: []
-        };
-      }
-      
-      merchantData[merchant].dates.push(date);
-      merchantData[merchant].amounts.push(amount);
-      merchantData[merchant].categories.push(category);
-    });
-
-    // Analyze for recurring patterns
-    const recurringExpenses: {
-      merchantName: string;
-      amount: number;
-      frequency: string;
-      lastSeen: Date;
-      category: string;
-    }[] = [];
-
-    Object.entries(merchantData).forEach(([merchant, data]) => {
-      // Need at least 2 occurrences to detect a pattern
-      if (data.dates.length < 2) {
-        return;
-      }
-      
-      // Sort dates chronologically
-      const sortedDates = [...data.dates].sort((a, b) => a.getTime() - b.getTime());
-      
-      // Calculate intervals between dates (in days)
-      const intervals: number[] = [];
-      for (let i = 1; i < sortedDates.length; i++) {
-        const diff = sortedDates[i].getTime() - sortedDates[i-1].getTime();
-        intervals.push(Math.round(diff / (1000 * 60 * 60 * 24))); // Convert to days
-      }
-      
-      // Check if intervals are consistent (allow 20% variation)
-      const avgInterval = intervals.reduce((sum, val) => sum + val, 0) / intervals.length;
-      const isConsistent = intervals.every(interval => 
-        Math.abs(interval - avgInterval) <= (avgInterval * 0.2)
-      );
-      
-      // If consistent pattern found
-      if (isConsistent && data.dates.length >= 2) {
-        // Determine frequency label
-        let frequency: string;
-        if (avgInterval <= 7) {
-          frequency = 'Weekly';
-        } else if (avgInterval <= 15) {
-          frequency = 'Bi-weekly';
-        } else if (avgInterval <= 35) {
-          frequency = 'Monthly';
-        } else if (avgInterval <= 95) {
-          frequency = 'Quarterly';
-        } else {
-          frequency = 'Annually';
-        }
-        
-        // Calculate average amount
-        const avgAmount = data.amounts.reduce((sum, amt) => sum + amt, 0) / data.amounts.length;
-        
-        // Most common category
-        const categoryCount: Record<string, number> = {};
-        data.categories.forEach(category => {
-          categoryCount[category] = (categoryCount[category] || 0) + 1;
-        });
-        
-        const mostCommonCategory = Object.entries(categoryCount)
-          .sort((a, b) => b[1] - a[1])[0][0];
-        
-        // Add to recurring expenses
-        recurringExpenses.push({
-          merchantName: merchant,
-          amount: avgAmount,
-          frequency,
-          lastSeen: new Date(Math.max(...data.dates.map(d => d.getTime()))),
-          category: mostCommonCategory
-        });
-      }
-    });
-    
-    // Sort by most recent first
-    return recurringExpenses.sort((a, b) => b.lastSeen.getTime() - a.lastSeen.getTime());
-    
-  } catch (error) {
-    console.error("Error detecting recurring expenses:", error);
-    return [];
-  }
-}
-
-/**
- * Generate enhanced weekly financial digest
- * @param userId User ID
- * @param receipts List of receipts
- * @returns Weekly digest content
  */
 export async function generateWeeklyDigest(userId: number, receipts: Receipt[]): Promise<string> {
   try {
     const totalSpend = receipts.reduce((sum, receipt) => sum + Number(receipt.total), 0);
-
-    // Get spending patterns
-    const patternAnalysis = await analyzeSpendingPatterns(receipts);
-    
-    // Get recurring expenses
-    const recurringExpenses = await detectRecurringExpenses(receipts);
 
     // Calculate spending by category
     const categorySpending: Record<string, number> = {};
@@ -696,37 +221,24 @@ export async function generateWeeklyDigest(userId: number, receipts: Receipt[]):
       .slice(0, 3)
       .map(([category, amount]) => `${category} (₹${amount.toFixed(2)})`);
 
-    // Create a more informative prompt with the new data
     const prompt = `
-      Generate a comprehensive weekly financial digest with this information:
+      Generate a weekly financial digest with this information:
 
       Total spend: ₹${totalSpend.toFixed(2)}
       Top spending categories: ${topCategories.join(", ")}
       Number of transactions: ${receipts.length}
-      
-      Spending patterns detected:
-      ${patternAnalysis.patterns.join('\n')}
-      
-      Recurring expenses:
-      ${recurringExpenses.map(exp => 
-        `${exp.merchantName} (${exp.frequency}: ₹${exp.amount.toFixed(2)})`
-      ).join('\n')}
 
       Include:
-      1. A summary of the week's spending highlighting the key trends
-      2. Insights on spending patterns that the user should be aware of
-      3. TWO specific saving tips based on the spending patterns and categories
-      4. If applicable, mention any recurring expenses that might need attention
+      1. A summary of the week's spending
+      2. One specific saving tip based on the spending pattern
 
-      Format the digest in a readable format with bullet points and clear sections. 
-      Make it personal, actionable, and focused on helping the user improve their finances. 
-      Keep it under 200 words.
+      Format the digest in a brief, readable format with bullet points. Keep it under 100 words.
     `;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 350
+      max_tokens: 200
     });
 
     return response.choices[0].message.content || 
@@ -831,69 +343,7 @@ export async function processReceiptImage(base64Image: string): Promise<{
 
     try {
       // Parse the GPT response into structured data
-      // Use a try-catch block to handle potential JSON parsing errors
-      let parsedResponse;
-      try {
-        // Pre-process the content to handle problematic merchant names before parsing
-        let preprocessedContent = content;
-        
-        // Handle the specific Shell sai baba road case which causes JSON parsing errors
-        if (content.includes('"Shell sai')) {
-          console.log('Found problematic "Shell sai" merchant name, preprocessing...');
-          // Replace the problematic merchant name
-          preprocessedContent = preprocessedContent.replace(/("merchantName"\s*:\s*)"([^"]*Shell sai[^"]*)"/g, '$1"Shell Gas Station"');
-          preprocessedContent = preprocessedContent.replace(/("merchant"\s*:\s*)"([^"]*Shell sai[^"]*)"/g, '$1"Shell Gas Station"');
-        }
-        
-        // General handling for quotes within JSON strings that might break parsing
-        // This replaces any remaining problematic patterns
-        preprocessedContent = preprocessedContent
-          .replace(/\\"/g, '"')        // Replace escaped quotes
-          .replace(/"{2,}/g, '"')      // Replace multiple consecutive quotes
-          .replace(/^"(.*)"$/g, '$1'); // Remove outer quotes if they exist
-        
-        try {
-          parsedResponse = JSON.parse(preprocessedContent);
-        } catch (err: any) {
-          console.error("Still failed to parse JSON after preprocessing:", err.message);
-          // Last resort: try to extract basic structure
-          const merchantMatch = content.match(/"merchantName"\s*:\s*"([^"]*)"/);
-          const dateMatch = content.match(/"date"\s*:\s*"([^"]*)"/);
-          const totalMatch = content.match(/"total"\s*:\s*([0-9.]+)/);
-          
-          parsedResponse = {
-            merchantName: merchantMatch ? merchantMatch[1].replace(/"/g, '') : 'Unknown Merchant',
-            date: dateMatch ? dateMatch[1] : new Date().toISOString().split('T')[0],
-            total: totalMatch ? parseFloat(totalMatch[1]) : 0,
-            items: [],
-            currency: 'USD'
-          };
-          console.log("Created fallback parsed response:", parsedResponse);
-        }
-      } catch (error: any) {
-        console.error("Initial JSON parsing error:", error.message);
-        // Attempt one more clean if the preprocessing didn't work
-        try {
-          const superCleanedContent = content
-            .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
-            .replace(/\\"/g, '\'')                         // Replace escaped quotes with single quotes
-            .replace(/"{2,}/g, '"')                        // Replace multiple consecutive quotes
-            .replace(/([^\\])"/g, '$1\'')                  // Replace unescaped double quotes with single quotes 
-            .replace(/^"/, '\'')                           // Replace first quote
-            .replace(/"$/, '\'');                          // Replace last quote
-          
-          parsedResponse = JSON.parse(superCleanedContent);
-        } catch (fallbackError) {
-          console.error("All JSON parsing attempts failed. Creating minimal fallback object.");
-          // Create a minimal valid response to avoid breaking the application
-          parsedResponse = {
-            merchantName: 'Unknown Merchant (JSON parse failed)',
-            date: new Date().toISOString().split('T')[0],
-            total: 0,
-            items: []
-          };
-        }
-      }
+      const parsedResponse = JSON.parse(content);
       
       // Apply enhanced currency detection
       const currencyResult = enhancedCurrencyDetection(parsedResponse);
@@ -905,17 +355,7 @@ export async function processReceiptImage(base64Image: string): Promise<{
       }
       
       // Validate and ensure all required fields
-      // Convert to string and escape any quotes to avoid JSON parsing issues
-      let merchantName = String(parsedResponse.merchantName || 'Unknown Merchant');
-      
-      // Check for and fix problematic merchant names
-      if (merchantName.includes('Shell sai') || merchantName.includes('"Shell sai')) {
-        console.log('Found problematic Shell sai merchant name in already parsed response, fixing...');
-        merchantName = 'Shell Gas Station';
-      }
-      
-      // Escape any quotes in the merchant name to prevent issues down the pipeline
-      merchantName = merchantName.replace(/"/g, '');
+      const merchantName = String(parsedResponse.merchantName || 'Unknown Merchant');
       
       // Process date - ensure YYYY-MM-DD format
       let dateValue = parsedResponse.date;
@@ -949,16 +389,11 @@ export async function processReceiptImage(base64Image: string): Promise<{
       const total = typeof totalValue === 'number' ? totalValue : parseFloat(String(totalValue).replace(',', '.'));
       
       // Process items to ensure they have the correct format
-      const items = Array.isArray(parsedResponse.items) ? parsedResponse.items.map((item: any) => {
-        // Escape quotes in item names to avoid JSON parsing issues
-        const itemName = String(item.name || 'Unknown item');
-        
-        return {
-          name: itemName,
-          price: typeof item.price === 'number' ? item.price : parseFloat(String(item.price).replace(',', '.')) || 0,
-          quantity: item.quantity || 1
-        };
-      }) : [];
+      const items = Array.isArray(parsedResponse.items) ? parsedResponse.items.map((item: any) => ({
+        name: String(item.name || 'Unknown item'),
+        price: typeof item.price === 'number' ? item.price : parseFloat(String(item.price).replace(',', '.')) || 0,
+        quantity: item.quantity || 1
+      })) : [];
       
       // Return the finalized, enhanced receipt data
       // Determine the most appropriate category based on merchant name and items

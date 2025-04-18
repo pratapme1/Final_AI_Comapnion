@@ -3,20 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
-
-// Configure express.json with a custom reviver to handle special cases like "Shell sai baba road"
-app.use(express.json({ 
-  limit: '50mb',
-  reviver: (key, value) => {
-    // If the key is 'merchantName' and value includes "Shell sai", sanitize it
-    if (key === 'merchantName' && typeof value === 'string' && value.includes('Shell sai')) {
-      console.log('Sanitizing problematic merchant name: Shell sai*');
-      return 'Shell Gas Station';
-    }
-    return value;
-  }
-}));
-
+app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
@@ -35,18 +22,7 @@ app.use((req, res, next) => {
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
-        try {
-          // Use a custom replacer function to handle problematic values
-          logLine += ` :: ${JSON.stringify(capturedJsonResponse, (key, value) => {
-            // Ensure strings with quotes are properly handled
-            if (typeof value === 'string') {
-              return value;
-            }
-            return value;
-          })}`;
-        } catch (error: any) {
-          logLine += ` :: [JSON conversion error: ${error.message || 'Unknown error'}]`;
-        }
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 
       if (logLine.length > 80) {
@@ -63,36 +39,26 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  // Custom error handler that specifically looks for JSON parsing errors
-  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    let message = err.message || "Internal Server Error";
-
-    // Check if it's a JSON syntax error and provide helpful error
-    if (err instanceof SyntaxError && err.message.includes('JSON')) {
-      console.error('JSON Parsing Error:', err.message);
-      message = "There was an issue processing the request data. Please check your input.";
-      
-      // Special handling for Shell sai baba road error
-      if (req.originalUrl.includes('/api/receipts') && err.message.includes('Shell sai')) {
-        message = "Receipt contains special characters that couldn't be processed. Please try again with a simpler format.";
-      }
-    }
+    const message = err.message || "Internal Server Error";
 
     res.status(status).json({ message });
-    
-    // Log full errors in development
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Error:', err);
-    }
+    throw err;
   });
 
+  // importantly only setup vite in development and after
+  // setting up all the other routes so the catch-all route
+  // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
+  // ALWAYS serve the app on port 5000
+  // this serves both the API and the client.
+  // It is the only port that is not firewalled.
   const port = 5000;
   server.listen({
     port,
