@@ -158,6 +158,11 @@ const Insights = () => {
             <CardContent>
               <p className="text-sm text-gray-600">
                 Get AI-powered insights on your spending patterns, detect categories, and find savings opportunities.
+                {latestReceiptId ? null : (
+                  <span className="block mt-1 text-amber-600 text-xs">
+                    Please upload a receipt first to enable analysis.
+                  </span>
+                )}
               </p>
             </CardContent>
             <CardFooter className="pt-0">
@@ -165,8 +170,12 @@ const Insights = () => {
                 variant="default"
                 size="sm"
                 className="w-full"
-                onClick={() => receiptInsightsMutation.mutate(1)} 
-                disabled={receiptInsightsMutation.isPending}
+                onClick={() => latestReceiptId ? receiptInsightsMutation.mutate(latestReceiptId) : toast({
+                  title: "No receipts found",
+                  description: "Please upload a receipt first before generating insights.",
+                  variant: "destructive",
+                })}
+                disabled={receiptInsightsMutation.isPending || !latestReceiptId}
               >
                 {receiptInsightsMutation.isPending ? (
                   <>
@@ -344,8 +353,14 @@ const Insights = () => {
                         onClick={() => {
                           if (tabKey === 'digest') {
                             weeklyDigestMutation.mutate();
+                          } else if (latestReceiptId) {
+                            receiptInsightsMutation.mutate(latestReceiptId);
                           } else {
-                            receiptInsightsMutation.mutate(1);
+                            toast({
+                              title: "No receipts found",
+                              description: "Please upload a receipt first before generating insights.",
+                              variant: "destructive",
+                            });
                           }
                         }}
                       >
