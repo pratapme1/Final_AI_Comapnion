@@ -122,19 +122,19 @@ const Insights = () => {
   return (
     <div className="max-w-6xl mx-auto">
       {/* Page header */}
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+      <div className="mb-6 lg:mb-8 px-2 sm:px-0 text-center">
+        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
           AI Financial Insights
         </h1>
-        <p className="text-sm text-gray-500 mt-2 max-w-lg mx-auto">
+        <p className="text-xs sm:text-sm text-gray-500 mt-2 max-w-lg mx-auto">
           Smart Ledger's AI-powered analysis helps you optimize your finances with personalized recommendations
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8 px-2 sm:px-0">
         {/* Left column: AI Action Cards */}
-        <div className="space-y-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Generate Insights</h2>
+        <div className="space-y-4 lg:space-y-6">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 lg:mb-4">Generate Insights</h2>
           
           {/* Generate Receipt Insights Card */}
           <Card className="border-l-4 border-l-primary shadow-sm">
@@ -267,7 +267,7 @@ const Insights = () => {
 
         {/* Right column: Insights List with Tabs */}
         <div className="lg:col-span-2">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Insights</h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 lg:mb-4">Your Insights</h2>
           
           <Tabs 
             defaultValue="all" 
@@ -275,21 +275,24 @@ const Insights = () => {
             className="mb-6"
           >
             <div className="border rounded-lg overflow-hidden mb-6">
-              <TabsList className="flex w-full justify-start rounded-none bg-gray-50 p-0 border-b">
-                {Object.keys(countByType).map((tabKey) => (
-                  <TabsTrigger 
-                    key={tabKey}
-                    value={tabKey} 
-                    className="flex items-center data-[state=active]:bg-white data-[state=active]:shadow-none rounded-none border-r last:border-r-0 py-2 px-4"
-                  >
-                    {getTabIcon(tabKey)}
-                    <span>{getTabName(tabKey)}</span>
-                    <Badge variant="secondary" className="ml-2 bg-gray-100">
-                      {countByType[tabKey]}
-                    </Badge>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+              <div className="overflow-x-auto">
+                <TabsList className="flex min-w-max rounded-none bg-gray-50 p-0 border-b">
+                  {Object.keys(countByType).map((tabKey) => (
+                    <TabsTrigger 
+                      key={tabKey}
+                      value={tabKey} 
+                      className="flex items-center data-[state=active]:bg-white data-[state=active]:shadow-none rounded-none border-r last:border-r-0 py-2 px-3 whitespace-nowrap"
+                    >
+                      {getTabIcon(tabKey)}
+                      <span className="hidden sm:inline">{getTabName(tabKey)}</span>
+                      <span className="sm:hidden">{tabKey === 'budget-alert' ? 'Alert' : tabKey === 'receipt-analysis' ? 'Receipt' : getTabName(tabKey)}</span>
+                      <Badge variant="secondary" className="ml-1 sm:ml-2 bg-gray-100 text-xs">
+                        {countByType[tabKey]}
+                      </Badge>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
 
               {Object.keys(countByType).map((tabKey) => (
                 <TabsContent key={tabKey} value={tabKey} className="p-4 bg-white">
@@ -349,9 +352,9 @@ const Insights = () => {
           </Tabs>
 
           {/* How It Works Section */}
-          <div className="mt-8">
-            <h3 className="text-lg font-medium mb-4 flex items-center">
-              <BookOpen className="h-5 w-5 mr-2 text-gray-600" />
+          <div className="mt-6 lg:mt-8">
+            <h3 className="text-base sm:text-lg font-medium mb-3 lg:mb-4 flex items-center">
+              <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-gray-600" />
               How AI Financial Insights Works
             </h3>
             <div className="bg-gradient-to-r from-white to-gray-50 rounded-lg p-5 border">
