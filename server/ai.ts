@@ -1,6 +1,5 @@
 import OpenAI from "openai";
-import type { ReceiptItem } from "@shared/schema";
-import type { Receipt } from "@shared/schema";
+import type { ReceiptItem, Receipt, InsertInsight } from "@shared/schema";
 import { enhancedCurrencyDetection, calculateSubtotal } from "./currencyDetection";
 
 // Initialize OpenAI client
