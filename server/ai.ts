@@ -831,7 +831,16 @@ export async function processReceiptImage(base64Image: string): Promise<{
 
     try {
       // Parse the GPT response into structured data
-      const parsedResponse = JSON.parse(content);
+      // Use a try-catch block to handle potential JSON parsing errors
+      let parsedResponse;
+      try {
+        parsedResponse = JSON.parse(content);
+      } catch (error: any) {
+        console.error("JSON parsing error:", error.message, "Content:", content);
+        // Attempt to clean the content if necessary before parsing
+        const cleanedContent = content.replace(/\\"/g, '"').replace(/"{2,}/g, '"');
+        parsedResponse = JSON.parse(cleanedContent);
+      }
       
       // Apply enhanced currency detection
       const currencyResult = enhancedCurrencyDetection(parsedResponse);

@@ -338,7 +338,9 @@ app.post("/api/process-receipt-image", async (req: Request, res: Response) => {
       const categoryCounts: Record<string, number> = {};
       categorizedItems.forEach(item => {
         if (item.category) {
-          categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
+          // Ensure category is a sanitized string to prevent JSON parsing issues
+          const safeCategory = String(item.category);
+          categoryCounts[safeCategory] = (categoryCounts[safeCategory] || 0) + 1;
         }
       });
       
