@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
@@ -8,12 +8,26 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createReceipt, uploadReceiptFile } from "@/lib/openai";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { PlusCircle, X, Upload, Save, FileStack } from "lucide-react";
+import { 
+  PlusCircle, 
+  X, 
+  Upload, 
+  Save, 
+  FileStack, 
+  FileImage, 
+  FilePlus, 
+  Loader2, 
+  CheckCircle2
+} from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { useReceiptData } from "@/hooks/use-receipt-data";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 
 const receiptSchema = z.object({
   merchantName: z.string().min(1, "Merchant name is required"),
@@ -320,229 +334,448 @@ const ReceiptUpload = () => {
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardContent className="pt-6">
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">Upload Receipt</h2>
-          <p className="text-sm text-gray-500">
-            Upload a receipt to get AI-powered insights on your spending
-          </p>
-        </div>
-
-        <div className="mb-6">
-          <Label htmlFor="receipt-upload" className="block mb-2">
-            Upload Receipt Files (PDF, PNG, or JPG)
-          </Label>
-          <div className="flex gap-4 items-center">
-            <Input
-              id="receipt-upload"
-              type="file"
-              accept=".pdf,.png,.jpg,.jpeg"
-              onChange={handleFileUpload}
-              disabled={isUploading || mutation.isPending}
-              className="flex-1"
-              multiple // Allow multiple file selection
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={isUploading}
-              className="flex-shrink-0"
-            >
-              <Upload className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Show processing status */}
-          {isUploading && (
-            <div className="mt-3 text-sm">
-              <p className="font-medium text-gray-700">Processing {pendingUploads.length} receipt(s)...</p>
-              <ul className="mt-1 space-y-1">
-                {pendingUploads.map((file, index) => (
-                  <li key={index} className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>
-                    <span className="text-gray-600">{file.name}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Show successfully processed files */}
-          {!isUploading && uploadedFiles.length > 0 && (
-            <div className="mt-3 text-sm">
-              <div className="flex items-center justify-between">
-                <p className="font-medium text-gray-700">Successfully processed:</p>
-                <div className="flex items-center gap-3">
-                  {uploadedFiles.length > 1 && (
-                    <span className="text-sm text-blue-600">
-                      {uploadedFiles.length} receipts ready for submission
-                    </span>
-                  )}
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => {
-                      setUploadedFiles([]);
-                      setProcessedReceipts([]);
-                      form.reset({
-                        merchantName: "",
-                        date: new Date().toISOString().split("T")[0],
-                        total: "",
-                        category: "Others",
-                        items: [{ name: "", price: "", category: "Others" }]
-                      });
-                    }}
-                    className="h-7 px-2"
-                  >
-                    Clear All
-                  </Button>
+    <div className="max-w-4xl mx-auto">
+      <Tabs defaultValue="ai-upload" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="ai-upload" className="flex items-center gap-2">
+            <FileImage className="w-4 h-4" />
+            Automatic AI Upload
+          </TabsTrigger>
+          <TabsTrigger value="manual-upload" className="flex items-center gap-2">
+            <FilePlus className="w-4 h-4" />
+            Manual Entry
+          </TabsTrigger>
+        </TabsList>
+        
+        {/* AI Upload Tab Content */}
+        <TabsContent value="ai-upload">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileImage className="w-5 h-5 text-primary" />
+                AI-Powered Receipt Processor
+              </CardTitle>
+              <CardDescription>
+                Upload receipt images or PDFs for automatic data extraction with AI
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-6 space-y-4">
+                <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-6">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <Upload className="w-10 h-10 text-gray-400" />
+                    <p className="text-sm text-gray-600">Drop files here or click to browse</p>
+                    <Input
+                      id="receipt-upload"
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg"
+                      onChange={handleFileUpload}
+                      disabled={isUploading || mutation.isPending}
+                      className="w-full max-w-xs"
+                      multiple // Allow multiple file selection
+                    />
+                    <p className="text-xs text-gray-500 mt-2">Supports PDF, PNG, JPG (max 10MB per file)</p>
+                  </div>
                 </div>
+                
+                {/* Upload Progress */}
+                {isUploading && (
+                  <div className="space-y-3 mt-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Processing {pendingUploads.length} receipt(s)...</span>
+                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    </div>
+                    <Progress value={uploadedFiles.length / pendingUploads.length * 100} className="h-2" />
+                    <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
+                      {pendingUploads.map((file, index) => {
+                        const isProcessed = uploadedFiles.includes(file.name);
+                        return (
+                          <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-sm">
+                            {isProcessed ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-500" />
+                            ) : (
+                              <div className="w-4 h-4 rounded-full bg-blue-500 animate-pulse"></div>
+                            )}
+                            <span className="flex-1 truncate">{file.name}</span>
+                            <span className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</span>
+                            <Badge className="text-xs">
+                              {isProcessed ? "Complete" : "Processing"}
+                            </Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Processed Files List */}
+                {!isUploading && processedReceipts.length > 0 && (
+                  <div className="space-y-3 mt-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        <span className="text-sm font-medium">Successfully processed {processedReceipts.length} receipt(s)</span>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => {
+                          setUploadedFiles([]);
+                          setProcessedReceipts([]);
+                          form.reset({
+                            merchantName: "",
+                            date: new Date().toISOString().split("T")[0],
+                            total: "",
+                            category: "Others",
+                            items: [{ name: "", price: "", category: "Others" }]
+                          });
+                        }}
+                        className="text-xs h-8"
+                      >
+                        <X className="w-3 h-3 mr-1" /> Clear All
+                      </Button>
+                    </div>
+                    
+                    <div className="border rounded-md divide-y">
+                      {processedReceipts.map((receipt, index) => (
+                        <div key={index} className="p-3 text-sm">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium">{receipt.fileName}</span>
+                            <Badge>{receipt.data.items?.length || 0} items</Badge>
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Merchant:</span>
+                              <span className="font-medium">{receipt.data.merchantName || "Unknown"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Date:</span>
+                              <span className="font-medium">
+                                {receipt.data.date 
+                                  ? new Date(receipt.data.date).toLocaleDateString() 
+                                  : "Unknown"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Total:</span>
+                              <span className="font-medium">₹{receipt.data.total || "0"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Category:</span>
+                              <span className="font-medium">{receipt.data.category || "Others"}</span>
+                            </div>
+                          </div>
+                          {index === 0 && (
+                            <div className="mt-2 text-xs text-blue-600">
+                              This receipt is loaded in the form below for review
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {processedReceipts.length > 1 && (
+                      <div className="flex justify-end mt-4">
+                        <Button
+                          variant="secondary"
+                          className="flex items-center"
+                          disabled={batchMutation.isPending || isSubmittingBatch}
+                          onClick={() => batchMutation.mutate(processedReceipts)}
+                        >
+                          {batchMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Processing...
+                            </>
+                          ) : (
+                            <>
+                              <FileStack className="mr-2 h-4 w-4" />
+                              Submit All {processedReceipts.length} Receipts
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <ul className="mt-1 space-y-1">
-                {uploadedFiles.map((fileName, index) => (
-                  <li key={index} className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                    <span className="text-gray-600">{fileName}</span>
-                  </li>
-                ))}
-              </ul>
               
-              {uploadedFiles.length > 1 && (
-                <p className="mt-2 text-xs text-gray-500">
-                  The first receipt is loaded in the form below. You can edit it before submitting or use the "Submit All" button to process all receipts at once.
-                </p>
+              {/* Form for verification/editing of AI-extracted data */}
+              {processedReceipts.length > 0 && (
+                <>
+                  <Separator className="my-6" />
+                  <div className="mb-4">
+                    <h3 className="text-md font-medium">Verify Receipt Details</h3>
+                    <p className="text-sm text-gray-500">
+                      The AI has extracted the following details. Please verify and make any necessary corrections.
+                    </p>
+                  </div>
+                  
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="merchantName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Merchant Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter merchant name" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="date"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Date</FormLabel>
+                              <FormControl>
+                                <Input type="date" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="total"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Total Amount</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Enter total amount"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="category"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Receipt Category</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                                value={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select category" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="Groceries">Groceries</SelectItem>
+                                  <SelectItem value="Utilities">Utilities</SelectItem>
+                                  <SelectItem value="Entertainment">Entertainment</SelectItem>
+                                  <SelectItem value="Transportation">Transportation</SelectItem>
+                                  <SelectItem value="Dining">Dining</SelectItem>
+                                  <SelectItem value="Shopping">Shopping</SelectItem>
+                                  <SelectItem value="Travel">Travel</SelectItem>
+                                  <SelectItem value="Health">Health</SelectItem>
+                                  <SelectItem value="Education">Education</SelectItem>
+                                  <SelectItem value="Others">Others</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="space-y-4 mt-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Label>Line Items</Label>
+                            <Badge variant="outline" className="text-xs">
+                              {form.getValues("items").length} items
+                            </Badge>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addItemField}
+                            className="flex items-center text-xs h-7"
+                          >
+                            <PlusCircle className="mr-1 h-3 w-3" />
+                            Add Item
+                          </Button>
+                        </div>
+                        
+                        <div className="border rounded-md p-3 space-y-4 max-h-80 overflow-y-auto">
+                          <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 px-2">
+                            <div className="col-span-5">Item Name</div>
+                            <div className="col-span-3">Price</div>
+                            <div className="col-span-3">Category</div>
+                            <div className="col-span-1"></div>
+                          </div>
+                          
+                          {form.getValues("items").map((_, index) => (
+                            <div key={index} className="grid grid-cols-12 gap-2 items-start bg-gray-50 rounded-md p-2">
+                              <div className="col-span-5">
+                                <FormField
+                                  control={form.control}
+                                  name={`items.${index}.name`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel className="sr-only">Item Name</FormLabel>
+                                      <FormControl>
+                                        <Input placeholder="Item name" {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                              <div className="col-span-3">
+                                <FormField
+                                  control={form.control}
+                                  name={`items.${index}.price`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel className="sr-only">Price</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          step="0.01"
+                                          placeholder="Price"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                              <div className="col-span-3">
+                                <FormField
+                                  control={form.control}
+                                  name={`items.${index}.category`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel className="sr-only">Category</FormLabel>
+                                      <Select
+                                        onValueChange={field.onChange}
+                                        defaultValue={field.value}
+                                        value={field.value}
+                                      >
+                                        <FormControl>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Category" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          <SelectItem value="Groceries">Groceries</SelectItem>
+                                          <SelectItem value="Utilities">Utilities</SelectItem>
+                                          <SelectItem value="Entertainment">Entertainment</SelectItem>
+                                          <SelectItem value="Transportation">Transportation</SelectItem>
+                                          <SelectItem value="Dining">Dining</SelectItem>
+                                          <SelectItem value="Shopping">Shopping</SelectItem>
+                                          <SelectItem value="Travel">Travel</SelectItem>
+                                          <SelectItem value="Health">Health</SelectItem>
+                                          <SelectItem value="Education">Education</SelectItem>
+                                          <SelectItem value="Others">Others</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                              <div className="col-span-1 pt-2">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removeItemField(index)}
+                                  className="h-8 w-8 text-gray-500"
+                                  disabled={form.getValues("items").length <= 1}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end mt-6">
+                        <Button
+                          type="submit"
+                          className="flex items-center"
+                          disabled={mutation.isPending}
+                        >
+                          {mutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="mr-2 h-4 w-4" />
+                              Save Receipt
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </>
               )}
-            </div>
-          )}
-        </div>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="merchantName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Merchant Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. Big Basket" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="total"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Total Amount (₹)</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" min="0" placeholder="0.00" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <Select
-                      value={field.value}
-                      onValueChange={(value) => {
-                        // First update the receipt category
-                        field.onChange(value);
-                        
-                        // Then update all item categories that haven't been explicitly modified
-                        const items = form.getValues("items");
-                        const defaultCategory = form.getValues("category") || "Others";
-                        
-                        // Update items that haven't been explicitly changed from default/receipt category
-                        const updatedItems = items.map(item => {
-                          // If item category matches the previous default, update it to new default
-                          if (item.category === defaultCategory || item.category === "Others") {
-                            return { ...item, category: value };
-                          }
-                          return item;
-                        });
-                        
-                        form.setValue("items", updatedItems);
-                      }}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Groceries">Groceries</SelectItem>
-                        <SelectItem value="Dining">Dining</SelectItem>
-                        <SelectItem value="Utilities">Utilities</SelectItem>
-                        <SelectItem value="Transportation">Transportation</SelectItem>
-                        <SelectItem value="Entertainment">Entertainment</SelectItem>
-                        <SelectItem value="Shopping">Shopping</SelectItem>
-                        <SelectItem value="Health">Health</SelectItem>
-                        <SelectItem value="Travel">Travel</SelectItem>
-                        <SelectItem value="Personal Care">Personal Care</SelectItem>
-                        <SelectItem value="Others">Others</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Receipt Items</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addItemField}
-                  className="flex items-center"
-                >
-                  <PlusCircle className="mr-1 h-4 w-4" />
-                  Add Item
-                </Button>
-              </div>
-
-              {form.watch("items").map((_, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                  <div className="md:col-span-4">
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* Manual Entry Tab Content */}
+        <TabsContent value="manual-upload">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FilePlus className="w-5 h-5 text-primary" />
+                Manual Receipt Entry
+              </CardTitle>
+              <CardDescription>
+                Manually enter receipt details without uploading files
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name={`items.${index}.name`}
+                      name="merchantName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className={index !== 0 ? "sr-only" : undefined}>
-                            Item Name
-                          </FormLabel>
+                          <FormLabel>Merchant Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g. Milk 1L" {...field} />
+                            <Input placeholder="Enter merchant name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -550,21 +783,18 @@ const ReceiptUpload = () => {
                     />
                   </div>
 
-                  <div className="md:col-span-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name={`items.${index}.price`}
+                      name="total"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className={index !== 0 ? "sr-only" : undefined}>
-                            Price (₹)
-                          </FormLabel>
+                          <FormLabel>Total Amount</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
                               step="0.01"
-                              min="0"
-                              placeholder="0.00"
+                              placeholder="Enter total amount"
                               {...field}
                             />
                           </FormControl>
@@ -572,36 +802,32 @@ const ReceiptUpload = () => {
                         </FormItem>
                       )}
                     />
-                  </div>
-
-                  <div className="md:col-span-5">
                     <FormField
                       control={form.control}
-                      name={`items.${index}.category`}
+                      name="category"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className={index !== 0 ? "sr-only" : undefined}>
-                            Category
-                          </FormLabel>
+                          <FormLabel>Receipt Category</FormLabel>
                           <Select
-                            value={field.value}
                             onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            value={field.value}
                           >
                             <FormControl>
-                              <SelectTrigger className="w-full">
+                              <SelectTrigger>
                                 <SelectValue placeholder="Select category" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="Groceries">Groceries</SelectItem>
-                              <SelectItem value="Dining">Dining</SelectItem>
                               <SelectItem value="Utilities">Utilities</SelectItem>
-                              <SelectItem value="Transportation">Transportation</SelectItem>
                               <SelectItem value="Entertainment">Entertainment</SelectItem>
+                              <SelectItem value="Transportation">Transportation</SelectItem>
+                              <SelectItem value="Dining">Dining</SelectItem>
                               <SelectItem value="Shopping">Shopping</SelectItem>
-                              <SelectItem value="Health">Health</SelectItem>
                               <SelectItem value="Travel">Travel</SelectItem>
-                              <SelectItem value="Personal Care">Personal Care</SelectItem>
+                              <SelectItem value="Health">Health</SelectItem>
+                              <SelectItem value="Education">Education</SelectItem>
                               <SelectItem value="Others">Others</SelectItem>
                             </SelectContent>
                           </Select>
@@ -611,47 +837,148 @@ const ReceiptUpload = () => {
                     />
                   </div>
 
-                  <div className="md:col-span-1 flex justify-end">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Label>Line Items</Label>
+                        <Badge variant="outline" className="text-xs">
+                          {form.getValues("items").length} items
+                        </Badge>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addItemField}
+                        className="flex items-center text-xs h-7"
+                      >
+                        <PlusCircle className="mr-1 h-3 w-3" />
+                        Add Item
+                      </Button>
+                    </div>
+                    
+                    <div className="border rounded-md p-3 space-y-4 max-h-80 overflow-y-auto">
+                      <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 px-2">
+                        <div className="col-span-5">Item Name</div>
+                        <div className="col-span-3">Price</div>
+                        <div className="col-span-3">Category</div>
+                        <div className="col-span-1"></div>
+                      </div>
+                      
+                      {form.getValues("items").map((_, index) => (
+                        <div key={index} className="grid grid-cols-12 gap-2 items-start bg-gray-50 rounded-md p-2">
+                          <div className="col-span-5">
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.name`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="sr-only">Item Name</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Item name" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          <div className="col-span-3">
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.price`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="sr-only">Price</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      placeholder="Price"
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          <div className="col-span-3">
+                            <FormField
+                              control={form.control}
+                              name={`items.${index}.category`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="sr-only">Category</FormLabel>
+                                  <Select
+                                    onValueChange={field.onChange}
+                                    defaultValue={field.value}
+                                    value={field.value}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Category" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="Groceries">Groceries</SelectItem>
+                                      <SelectItem value="Utilities">Utilities</SelectItem>
+                                      <SelectItem value="Entertainment">Entertainment</SelectItem>
+                                      <SelectItem value="Transportation">Transportation</SelectItem>
+                                      <SelectItem value="Dining">Dining</SelectItem>
+                                      <SelectItem value="Shopping">Shopping</SelectItem>
+                                      <SelectItem value="Travel">Travel</SelectItem>
+                                      <SelectItem value="Health">Health</SelectItem>
+                                      <SelectItem value="Education">Education</SelectItem>
+                                      <SelectItem value="Others">Others</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          <div className="col-span-1 pt-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeItemField(index)}
+                              className="h-8 w-8 text-gray-500"
+                              disabled={form.getValues("items").length <= 1}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end mt-6">
                     <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeItemField(index)}
-                      disabled={form.watch("items").length <= 1}
-                      className="h-10 w-10"
+                      type="submit"
+                      className="flex items-center"
+                      disabled={mutation.isPending}
                     >
-                      <X className="h-4 w-4" />
+                      {mutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Save Receipt
+                        </>
+                      )}
                     </Button>
                   </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Button to submit batch receipts */}
-            {uploadedFiles.length > 1 && (
-              <Button
-                type="button"
-                className="w-full mb-3"
-                variant="secondary"
-                disabled={batchMutation.isPending || isSubmittingBatch || processedReceipts.length === 0}
-                onClick={() => batchMutation.mutate(processedReceipts)}
-              >
-                <FileStack className="mr-2 h-4 w-4" />
-                {batchMutation.isPending ? "Processing..." : `Submit All ${processedReceipts.length} Receipts`}
-              </Button>
-            )}
-            
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={mutation.isPending || batchMutation.isPending}
-            >
-              {mutation.isPending ? "Processing..." : "Submit Current Receipt"}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
 
