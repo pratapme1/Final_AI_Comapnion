@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import BudgetForm from "@/components/budgets/BudgetForm";
 import BudgetList from "@/components/budgets/BudgetList";
-import { PlusIcon, AlertTriangle, BarChart3, TrendingUp, PiggyBank } from "lucide-react";
+import { PlusIcon, AlertTriangle, BarChart3, TrendingUp, PiggyBank, Lightbulb } from "lucide-react";
 import { formatCurrency } from "@/lib/openai";
 import { motion } from "framer-motion";
 
@@ -383,7 +383,7 @@ const Budgets = () => {
       <Card className="overflow-hidden border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-shadow">
         <CardHeader className="pb-2 bg-gradient-to-r from-gray-50 to-white">
           <CardTitle className="text-xl font-semibold text-gray-900 flex items-center">
-            <LightbulbIcon className="h-5 w-5 mr-2 text-blue-500" />
+            <Lightbulb className="h-5 w-5 mr-2 text-blue-500" />
             Budget Insights
           </CardTitle>
           <CardDescription>
