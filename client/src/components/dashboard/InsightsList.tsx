@@ -158,7 +158,12 @@ const InsightsList = () => {
                         )}
                       </h3>
                       <p className="mt-1 text-sm text-gray-700 line-clamp-2">
-                        {insight.content}
+                        {insight.type === 'digest' 
+                          ? insight.content
+                              .replace(/\\n/g, ' ')
+                              .replace(/# |## /g, '')
+                              .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+                          : insight.content}
                       </p>
                       {insight.relatedItemId && (
                         <Link href={`/receipts/${insight.relatedItemId}`}>
