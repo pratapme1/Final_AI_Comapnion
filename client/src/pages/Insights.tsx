@@ -27,6 +27,14 @@ const Insights = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
+  // Get receipts for the current user
+  const { data: receipts } = useQuery({
+    queryKey: ['/api/receipts'],
+  });
+  
+  // Find the most recent receipt ID
+  const latestReceiptId = receipts && receipts.length > 0 ? receipts[0].id : null;
+  
   // Mutation for generating insights from receipts
   const receiptInsightsMutation = useMutation({
     mutationFn: async (receiptId: number) => generateReceiptInsights(receiptId),
