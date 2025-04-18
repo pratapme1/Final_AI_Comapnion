@@ -11,3 +11,34 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+@layer components {
+  /* Custom toast styles with light green background */
+  .toast-success {
+    @apply bg-green-50 border-green-200 text-green-800;
+  }
+  
+  /* Light input fields */
+  .input-light {
+    @apply bg-white border-gray-200 focus:border-gray-300 focus:ring-gray-200;
+  }
+  
+  /* Override all inputs */
+  .input, 
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="date"],
+  textarea,
+  select {
+    @apply bg-white border-gray-200;
+  }
+  
+  /* Green success indicators */
+  .success-icon {
+    @apply text-green-500;
+  }
+}
