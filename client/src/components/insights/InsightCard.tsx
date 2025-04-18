@@ -112,48 +112,69 @@ const InsightCard = ({ insight }: InsightCardProps) => {
             <div className={`mt-2 text-sm ${styles.text} whitespace-pre-line`}>
               {insight.type === 'digest' ? (
                 <div className="digest-content">
-                  {insight.content.split('\n').map((paragraph, index) => {
-                    // Check if this is a heading (starts with ## or #)
-                    if (paragraph.startsWith('## ')) {
-                      return (
-                        <h4 key={index} className="text-blue-700 font-medium text-sm mt-3 mb-1 border-b pb-1 border-blue-100">
-                          {paragraph.replace('## ', '')}
-                        </h4>
-                      );
-                    } else if (paragraph.startsWith('# ')) {
-                      return (
-                        <h3 key={index} className="text-blue-800 font-semibold text-base mt-4 mb-2">
-                          {paragraph.replace('# ', '')}
-                        </h3>
-                      );
-                    } else if (paragraph.startsWith('- ')) {
-                      // This is a list item
-                      return (
-                        <div key={index} className="flex items-baseline mb-1">
-                          <div className="rounded-full bg-blue-200 h-1.5 w-1.5 mt-1.5 mr-2 flex-shrink-0"></div>
-                          <p>{paragraph.replace('- ', '')}</p>
-                        </div>
-                      );
-                    } else if (paragraph.includes(':')) {
-                      // This might be a key-value pair like "Total Spend: $500"
-                      const [key, value] = paragraph.split(':');
-                      if (key && value) {
+                  {/* Process and clean the content before splitting into paragraphs */}
+                  {(() => {
+                    // Function to clean and normalize the content
+                    const cleanContent = (rawContent: string) => {
+                      return rawContent
+                        .replace(/\\n/g, '\n')      // Replace literal \n with line breaks
+                        .replace(/\\"/g, '"')       // Replace \" with "
+                        .replace(/\\'/g, "'")       // Replace \' with '
+                        .replace(/\\t/g, '    ')    // Replace \t with spaces
+                        .replace(/\\r/g, '')        // Remove \r characters
+                        // Replace Unicode escapes with actual characters
+                        .replace(/\\u([0-9a-fA-F]{4})/g, (_, code) => {
+                          return String.fromCharCode(parseInt(code, 16));
+                        });
+                    };
+                    
+                    // Clean the content first
+                    const cleanedContent = cleanContent(insight.content);
+                    
+                    // Now split by real line breaks and process
+                    return cleanedContent.split('\n').map((paragraph, index) => {
+                      // Check if this is a heading (starts with ## or #)
+                      if (paragraph.startsWith('## ')) {
                         return (
-                          <div key={index} className="flex justify-between items-center my-1 border-b border-blue-50 pb-1">
-                            <span className="font-medium">{key.trim()}:</span>
-                            <span className="text-right">{value.trim()}</span>
+                          <h4 key={index} className="text-blue-700 font-medium text-sm mt-3 mb-1 border-b pb-1 border-blue-100">
+                            {paragraph.replace('## ', '')}
+                          </h4>
+                        );
+                      } else if (paragraph.startsWith('# ')) {
+                        return (
+                          <h3 key={index} className="text-blue-800 font-semibold text-base mt-4 mb-2">
+                            {paragraph.replace('# ', '')}
+                          </h3>
+                        );
+                      } else if (paragraph.startsWith('- ')) {
+                        // This is a list item
+                        return (
+                          <div key={index} className="flex items-baseline mb-1">
+                            <div className="rounded-full bg-blue-200 h-1.5 w-1.5 mt-1.5 mr-2 flex-shrink-0"></div>
+                            <p>{paragraph.replace('- ', '')}</p>
                           </div>
                         );
+                      } else if (paragraph.includes(':')) {
+                        // This might be a key-value pair like "Total Spend: $500"
+                        const [key, value] = paragraph.split(':');
+                        if (key && value) {
+                          return (
+                            <div key={index} className="flex justify-between items-center my-1 border-b border-blue-50 pb-1">
+                              <span className="font-medium">{key.trim()}:</span>
+                              <span className="text-right">{value.trim()}</span>
+                            </div>
+                          );
+                        }
                       }
-                    }
-                    
-                    // Regular paragraph with some space between
-                    return paragraph.trim() ? (
-                      <p key={index} className="mb-2">{paragraph}</p>
-                    ) : (
-                      <div key={index} className="h-2"></div> // Empty line spacer
-                    );
-                  })}
+                      
+                      // Regular paragraph with some space between
+                      return paragraph.trim() ? (
+                        <p key={index} className="mb-2">{paragraph}</p>
+                      ) : (
+                        <div key={index} className="h-2"></div> // Empty line spacer
+                      );
+                    });
+                  })()}
                 </div>
               ) : (
                 <p>{insight.content}</p>
