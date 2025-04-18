@@ -1,12 +1,12 @@
 import { apiRequest } from "./queryClient";
 
 /**
- * Formats a number as currency (USD)
+ * Formats a number as currency (INR)
  */
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'INR',
     minimumFractionDigits: 2
   }).format(amount);
 }
