@@ -1,13 +1,59 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import InsightCard from "@/components/insights/InsightCard";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { generateReceiptInsights, generateWeeklyDigest } from "@/lib/openai";
+import { useToast } from "@/hooks/use-toast";
+import { Sparkles, BookOpen, Receipt, Loader2 } from "lucide-react";
 
 const Insights = () => {
   const [activeTab, setActiveTab] = useState("all");
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  // Mutation for generating insights from receipts
+  const receiptInsightsMutation = useMutation({
+    mutationFn: async (receiptId: number) => generateReceiptInsights(receiptId),
+    onSuccess: () => {
+      toast({
+        title: "Receipt insights generated",
+        description: "New insights have been created based on your receipts.",
+        variant: "default",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/insights'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to generate insights",
+        description: error.message || "Please try again later.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Mutation for generating weekly digest
+  const weeklyDigestMutation = useMutation({
+    mutationFn: generateWeeklyDigest,
+    onSuccess: () => {
+      toast({
+        title: "Weekly digest generated",
+        description: "A new weekly financial digest has been created.",
+        variant: "default",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/insights'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to generate weekly digest",
+        description: error.message || "Please try again later.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const { data: insights, isLoading } = useQuery({
     queryKey: ['/api/insights'],
@@ -122,6 +168,87 @@ const Insights = () => {
           </TabsContent>
         ))}
       </Tabs>
+      
+      {/* AI Insights Generation Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        {/* Generate Receipt Insights Card */}
+        <Card className="border-2 border-dashed border-primary/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center font-medium text-primary">
+              <Receipt className="h-5 w-5 mr-2" />
+              Receipt Analysis
+            </CardTitle>
+            <CardDescription>
+              Get AI insights from your existing receipts
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-4">
+              Our AI will analyze your receipts to identify spending patterns, potential savings, and recurring expenses.
+            </p>
+            <div className="flex justify-end">
+              <Button
+                variant="default"
+                size="sm"
+                className="bg-gradient-to-r from-primary/90 to-primary hover:from-primary hover:to-primary/90"
+                onClick={() => receiptInsightsMutation.mutate(1)} // For simplicity, analyzing the first receipt
+                disabled={receiptInsightsMutation.isPending}
+              >
+                {receiptInsightsMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Analyze Receipts
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Generate Weekly Digest Card */}
+        <Card className="border-2 border-dashed border-primary/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center font-medium text-primary">
+              <BookOpen className="h-5 w-5 mr-2" />
+              Weekly Financial Digest
+            </CardTitle>
+            <CardDescription>
+              Generate a comprehensive weekly summary
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-4">
+              Get a personalized summary of your financial activity, including spending trends, budget status, and recommendations.
+            </p>
+            <div className="flex justify-end">
+              <Button
+                variant="default"
+                size="sm"
+                className="bg-gradient-to-r from-primary/90 to-primary hover:from-primary hover:to-primary/90"
+                onClick={() => weeklyDigestMutation.mutate()}
+                disabled={weeklyDigestMutation.isPending}
+              >
+                {weeklyDigestMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    Generate Weekly Digest
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Explanation Card */}
       <Card>

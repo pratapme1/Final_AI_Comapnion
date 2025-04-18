@@ -610,6 +610,46 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
     }
   });
   
+  // Generate weekly financial digest on demand
+  app.post("/api/insights/generate-weekly-digest", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const userId = req.user.id;
+      
+      // Get all receipts for this user to analyze
+      const userReceipts = await storage.getReceipts(userId);
+      
+      if (!userReceipts || userReceipts.length === 0) {
+        return res.status(400).json({ message: "No receipts found to generate a digest" });
+      }
+      
+      // Generate the weekly digest using the existing AI function
+      const digestContent = await generateWeeklyDigest(userId, userReceipts);
+      
+      if (!digestContent) {
+        return res.status(500).json({ message: "Failed to generate weekly digest" });
+      }
+      
+      // Save the digest as an insight
+      const newInsight = await storage.createInsight({
+        type: "digest",
+        date: new Date(),
+        content: digestContent,
+        userId,
+        read: false,
+        relatedItemId: null,
+      });
+      
+      res.status(201).json(newInsight);
+    } catch (error) {
+      console.error("Error generating weekly digest:", error);
+      res.status(500).json({ message: "Failed to generate weekly digest" });
+    }
+  });
+  
   // Schedule weekly digest generation (every Sunday at 6 PM)
   schedule.scheduleJob('0 18 * * 0', async () => {
     try {

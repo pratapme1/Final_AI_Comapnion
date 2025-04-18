@@ -1,176 +1,169 @@
 import { apiRequest } from "./queryClient";
 
-// Interface for API responses
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  message?: string;
-}
-
-// Budget related functions
-export async function createBudget(category: string, limit: number, month: string) {
-  return apiRequest("POST", "/api/budgets", { category, limit, month });
-}
-
-export async function updateBudget(budgetId: number, limit: number) {
-  return apiRequest("PUT", `/api/budgets/${budgetId}`, { limit });
-}
-
-export async function deleteBudget(budgetId: number) {
-  return apiRequest("DELETE", `/api/budgets/${budgetId}`, undefined);
-}
-
-// Receipt related functions
-export async function uploadReceiptFile(file: File) {
-  const formData = new FormData();
-  formData.append('file', file);
-  
-  console.log(`Processing file: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
-  
-  // Use standard fetch for FormData uploads
-  const response = await fetch('/api/receipts/upload', {
-    method: 'POST',
-    body: formData,
-    credentials: 'include'
-  });
-  
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-    throw new Error(errorData.message || `Error: ${response.status}`);
-  }
-  
-  const data = await response.json();
-  
-  // Add additional logging
-  console.log(`Receipt processing results for ${file.name}:`, {
-    merchantName: data.merchantName,
-    itemCount: data.items?.length || 0,
-    totalDetected: data.total !== undefined,
-    categoryDetected: data.category !== undefined
-  });
-  
-  return data;
-}
-
-export async function createReceipt(merchantName: string, date: Date, total: number, items: any[], category?: string) {
-  return apiRequest("POST", "/api/receipts", { 
-    merchantName, 
-    date: date.toISOString(), 
-    total, 
-    items,
-    category
-  });
-}
-
-// Insight related functions
-export async function markInsightAsRead(insightId: number) {
-  return apiRequest("PUT", `/api/insights/${insightId}/read`, undefined);
-}
-
-export async function generateReceiptInsights(receiptId: number) {
-  return apiRequest("POST", "/api/insights/generate-receipt-insights", { receiptId });
-}
-
-// Helper function to format currency
+/**
+ * Formats a number as currency (USD)
+ */
 export function formatCurrency(amount: number): string {
-  console.log("Formatting currency amount:", amount, "type:", typeof amount);
-  
-  // Handle NaN, undefined, or null values gracefully
-  if (amount === undefined || amount === null || isNaN(amount)) {
-    console.warn("Invalid amount for currency formatting:", amount);
-    return "₹0";
-  }
-  
-  // Ensure amount is a number
-  const numericAmount = Number(amount);
-  
-  // Format with Indian Rupee symbol and locale
-  return `₹${numericAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2
+  }).format(amount);
 }
 
-// Helper function to determine budget status color
+/**
+ * Function to send a request to generate insights based on a receipt
+ * @param receiptId - The ID of the receipt to analyze
+ */
+export async function generateReceiptInsights(receiptId: number): Promise<void> {
+  console.log(`Generating insights for receipt ${receiptId}`);
+  await apiRequest('POST', '/api/insights/generate-receipt-insights', { receiptId });
+}
+
+/**
+ * Function to generate weekly financial digest
+ */
+export async function generateWeeklyDigest(): Promise<void> {
+  console.log('Generating weekly financial digest');
+  await apiRequest('POST', '/api/insights/generate-weekly-digest');
+}
+
+/**
+ * Function to mark an insight as read
+ * @param insightId - The ID of the insight to mark as read
+ */
+export async function markInsightAsRead(insightId: number): Promise<void> {
+  await apiRequest('PUT', `/api/insights/${insightId}/read`);
+}
+
+/**
+ * Helper function to get the CSS color class for budget status bars based on percentage
+ * @param percentage - The percentage of budget used
+ * @returns CSS class for the status color
+ */
 export function getBudgetStatusColor(percentage: number): string {
-  if (percentage >= 100) {
-    return "bg-danger"; // Red
-  } else if (percentage >= 80) {
-    return "bg-warning"; // Orange/Yellow
+  if (percentage < 50) {
+    return 'bg-green-500';
+  } else if (percentage < 75) {
+    return 'bg-yellow-500';
+  } else if (percentage < 90) {
+    return 'bg-orange-500';
   } else {
-    return "bg-primary"; // Blue
+    return 'bg-red-500';
   }
 }
 
-// Helper function to get insight type color and icon
-export function getInsightTypeInfo(type: string): { color: string, bgColor: string, borderColor: string, icon: string } {
+/**
+ * Helper function for deleting a budget
+ * @param budgetId - The ID of the budget to delete
+ */
+export async function deleteBudget(budgetId: number): Promise<void> {
+  await apiRequest('DELETE', `/api/budgets/${budgetId}`);
+}
+
+/**
+ * Returns styling and icon information for different insight types
+ * @param type - The type of insight
+ * @returns Object with icon, color, and background color information
+ */
+export function getInsightTypeInfo(type: string): { 
+  icon: string; 
+  color: string; 
+  bgColor: string;
+  label: string;
+} {
   switch (type) {
     case 'saving':
       return {
-        color: 'text-green-800',
-        bgColor: 'bg-green-50',
-        borderColor: 'border-green-100',
-        icon: 'TrendingUp'
-      };
-    case 'budget-alert':
-      return {
-        color: 'text-red-800',
-        bgColor: 'bg-red-50',
-        borderColor: 'border-red-100',
-        icon: 'AlertTriangle'
+        icon: 'piggy-bank',
+        color: 'text-green-600',
+        bgColor: 'bg-green-100',
+        label: 'Saving Opportunity'
       };
     case 'recurring':
       return {
-        color: 'text-yellow-800',
-        bgColor: 'bg-yellow-50',
-        borderColor: 'border-yellow-100',
-        icon: 'Clock'
+        icon: 'repeat',
+        color: 'text-yellow-600',
+        bgColor: 'bg-yellow-100',
+        label: 'Recurring Expense'
+      };
+    case 'budget-alert':
+      return {
+        icon: 'alert-triangle',
+        color: 'text-red-600',
+        bgColor: 'bg-red-100',
+        label: 'Budget Alert'
       };
     case 'digest':
       return {
-        color: 'text-blue-800',
-        bgColor: 'bg-blue-50',
-        borderColor: 'border-blue-100',
-        icon: 'FileText'
+        icon: 'file-text',
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-100',
+        label: 'Weekly Digest'
+      };
+    case 'receipt-analysis':
+      return {
+        icon: 'receipt',
+        color: 'text-purple-600',
+        bgColor: 'bg-purple-100',
+        label: 'Receipt Insight'
       };
     default:
       return {
-        color: 'text-gray-800',
-        bgColor: 'bg-gray-50',
-        borderColor: 'border-gray-100',
-        icon: 'Info'
+        icon: 'lightbulb',
+        color: 'text-gray-600',
+        bgColor: 'bg-gray-100',
+        label: 'AI Insight'
       };
   }
 }
 
-// Function to process a receipt image using the backend API
-export async function processReceiptImage(base64Image: string): Promise<{
-  merchantName: string;
-  date: Date;
-  total: number;
-  category: string;
-  items: Array<{ name: string; price: number; category?: string }>;
-}> {
-  try {
-    const response = await apiRequest("POST", "/api/process-receipt-image", { image: base64Image });
-    
-    // Parse the response
-    const data = response as any;
-    
-    // Convert string date to Date object
-    if (data.date && typeof data.date === 'string') {
-      data.date = new Date(data.date);
-    }
-    
-    return {
-      merchantName: data.merchantName || '',
-      date: data.date || new Date(),
-      total: data.total || 0,
-      category: data.category || 'Others',
-      items: Array.isArray(data.items) ? data.items.map((item: any) => ({
-        ...item,
-        category: item.category || data.category || 'Others'
-      })) : []
-    };
-  } catch (error) {
-    console.error("Error processing receipt image:", error);
-    throw new Error("Failed to process receipt image. Please try again or enter details manually.");
+/**
+ * Function to create a new budget
+ * @param data - Budget data including category, limit, and month
+ */
+export async function createBudget(data: { 
+  category: string; 
+  limit: string; 
+  month: string; 
+}): Promise<any> {
+  return await apiRequest('POST', '/api/budgets', data);
+}
+
+/**
+ * Function to update an existing budget
+ * @param id - ID of the budget to update
+ * @param limit - New budget limit value
+ */
+export async function updateBudget(id: number, limit: string): Promise<any> {
+  return await apiRequest('PUT', `/api/budgets/${id}`, { limit });
+}
+
+/**
+ * Function to upload a receipt file for processing
+ * @param file - The receipt file to upload
+ */
+export async function uploadReceiptFile(file: File): Promise<any> {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const response = await fetch('/api/receipts/upload', {
+    method: 'POST',
+    body: formData,
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to upload receipt');
   }
+  
+  return await response.json();
+}
+
+/**
+ * Function to create a new receipt
+ * @param data - The receipt data
+ */
+export async function createReceipt(data: any): Promise<any> {
+  const response = await apiRequest('POST', '/api/receipts', data);
+  return response;
 }

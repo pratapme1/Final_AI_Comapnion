@@ -5,7 +5,6 @@ import { format } from "date-fns";
 import { Clock, AlertCircle, Lightbulb } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Receipt, ReceiptItem } from "@shared/schema";
-import ReceiptAIInsights from "./ReceiptAIInsights";
 
 interface ReceiptDetailProps {
   id: number;
@@ -145,9 +144,6 @@ const ReceiptDetail = ({ id }: ReceiptDetailProps) => {
             <span>{formatCurrency(Number(receipt.total))}</span>
           </div>
         </div>
-        
-        {/* AI Insights Component - added as a separate section */}
-        <ReceiptAIInsights receiptId={receipt.id} />
       </CardContent>
     </Card>
   );
