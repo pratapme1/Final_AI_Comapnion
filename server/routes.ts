@@ -43,6 +43,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const month = req.query.month as string;
       
+      console.log(`Fetching budgets for user: ${userId}, month: ${month || 'all'}`);
+      
       let budgets;
       if (month) {
         budgets = await storage.getBudgetsByMonth(userId, month);
@@ -52,7 +54,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(budgets);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch budgets" });
+      console.error('Error fetching budgets:', error);
+      res.status(500).json({ message: "Failed to fetch budgets", error: error instanceof Error ? error.message : String(error) });
     }
   });
 
@@ -174,6 +177,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
       
+      console.log(`Fetching receipts for user: ${userId}, date range: ${startDate?.toISOString() || 'all'} to ${endDate?.toISOString() || 'all'}`);
+      
       let receipts;
       if (startDate && endDate) {
         receipts = await storage.getReceiptsByDateRange(userId, startDate, endDate);
@@ -181,9 +186,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         receipts = await storage.getReceipts(userId);
       }
       
+      console.log(`Found ${receipts.length} receipts`);
       res.json(receipts);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch receipts" });
+      console.error('Error fetching receipts:', error);
+      res.status(500).json({ message: "Failed to fetch receipts", error: error instanceof Error ? error.message : String(error) });
     }
   });
 
