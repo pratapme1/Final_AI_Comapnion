@@ -1,14 +1,26 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import InsightCard from "@/components/insights/InsightCard";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
 import { generateReceiptInsights, generateWeeklyDigest } from "@/lib/openai";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, BookOpen, Receipt, Loader2 } from "lucide-react";
+import { 
+  Sparkles, 
+  BookOpen, 
+  Receipt, 
+  Loader2, 
+  PiggyBank, 
+  AlertTriangle, 
+  RepeatIcon, 
+  FileText, 
+  LightbulbIcon,
+  ArrowRightIcon
+} from "lucide-react";
 
 const Insights = () => {
   const [activeTab, setActiveTab] = useState("all");
@@ -72,6 +84,7 @@ const Insights = () => {
     "budget-alert": 0,
     recurring: 0,
     digest: 0,
+    "receipt-analysis": 0,
   };
 
   insights?.forEach((insight: any) => {
@@ -80,118 +93,71 @@ const Insights = () => {
     }
   });
 
+  // Get icon for each tab
+  const getTabIcon = (type: string) => {
+    switch (type) {
+      case 'all': return <LightbulbIcon className="h-4 w-4 mr-2" />;
+      case 'saving': return <PiggyBank className="h-4 w-4 mr-2" />;
+      case 'budget-alert': return <AlertTriangle className="h-4 w-4 mr-2" />;
+      case 'recurring': return <RepeatIcon className="h-4 w-4 mr-2" />;
+      case 'digest': return <FileText className="h-4 w-4 mr-2" />;
+      case 'receipt-analysis': return <Receipt className="h-4 w-4 mr-2" />;
+      default: return <LightbulbIcon className="h-4 w-4 mr-2" />;
+    }
+  };
+
+  // Get human-readable tab name
+  const getTabName = (type: string) => {
+    switch (type) {
+      case 'all': return 'All Insights';
+      case 'saving': return 'Savings';
+      case 'budget-alert': return 'Budget Alerts';
+      case 'recurring': return 'Recurring';
+      case 'digest': return 'Weekly Digest';
+      case 'receipt-analysis': return 'Receipt Analysis';
+      default: return type.charAt(0).toUpperCase() + type.slice(1);
+    }
+  };
+
   return (
-    <div>
+    <div className="max-w-6xl mx-auto">
       {/* Page header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">AI Financial Insights</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Smart suggestions and alerts to optimize your finances
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+          AI Financial Insights
+        </h1>
+        <p className="text-sm text-gray-500 mt-2 max-w-lg mx-auto">
+          Smart Ledger's AI-powered analysis helps you optimize your finances with personalized recommendations
         </p>
       </div>
 
-      {/* Tabs for filtering insights */}
-      <Tabs 
-        defaultValue="all" 
-        onValueChange={setActiveTab}
-        className="mb-6"
-      >
-        {/* Responsive tabs - 2 rows on mobile, 1 row on larger screens */}
-        <div className="overflow-x-auto pb-3 -mb-3">
-          <TabsList className="inline-flex md:flex md:w-full min-w-max">
-            <TabsTrigger value="all" className="relative">
-              All Insights
-              <Badge variant="secondary" className="ml-2 absolute -top-1 -right-1 text-xs">
-                {countByType.all}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="saving" className="relative">
-              Savings
-              <Badge variant="secondary" className="ml-2 absolute -top-1 -right-1 text-xs">
-                {countByType.saving}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="budget-alert" className="relative">
-              Budget Alerts
-              <Badge variant="secondary" className="ml-2 absolute -top-1 -right-1 text-xs">
-                {countByType["budget-alert"]}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="recurring" className="relative">
-              Recurring
-              <Badge variant="secondary" className="ml-2 absolute -top-1 -right-1 text-xs">
-                {countByType.recurring}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="digest" className="relative">
-              Weekly Digest
-              <Badge variant="secondary" className="ml-2 absolute -top-1 -right-1 text-xs">
-                {countByType.digest}
-              </Badge>
-            </TabsTrigger>
-          </TabsList>
-        </div>
-        
-        {Object.keys(countByType).map((tabKey) => (
-          <TabsContent key={tabKey} value={tabKey}>
-            {isLoading ? (
-              <div className="space-y-4">
-                {[...Array(3)].map((_, index) => (
-                  <Card key={index}>
-                    <CardContent className="p-6">
-                      <div className="flex items-start">
-                        <Skeleton className="h-10 w-10 rounded-full mr-4" />
-                        <div className="flex-1 space-y-2">
-                          <Skeleton className="h-4 w-1/3" />
-                          <Skeleton className="h-3 w-full" />
-                          <Skeleton className="h-3 w-full" />
-                          <Skeleton className="h-3 w-2/3" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : filteredInsights?.length > 0 ? (
-              <div className="space-y-4">
-                {filteredInsights.map((insight: any) => (
-                  <InsightCard key={insight.id} insight={insight} />
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <p className="text-gray-500">No insights available in this category.</p>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        ))}
-      </Tabs>
-      
-      {/* AI Insights Generation Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Generate Receipt Insights Card */}
-        <Card className="border-2 border-dashed border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center font-medium text-primary">
-              <Receipt className="h-5 w-5 mr-2" />
-              Receipt Analysis
-            </CardTitle>
-            <CardDescription>
-              Get AI insights from your existing receipts
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600 mb-4">
-              Our AI will analyze your receipts to identify spending patterns, potential savings, and recurring expenses.
-            </p>
-            <div className="flex justify-end">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left column: AI Action Cards */}
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Generate Insights</h2>
+          
+          {/* Generate Receipt Insights Card */}
+          <Card className="border-l-4 border-l-primary shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center font-medium">
+                <Receipt className="h-5 w-5 mr-2 text-primary" />
+                Receipt Analysis
+              </CardTitle>
+              <CardDescription>
+                Analyze your existing receipts
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600">
+                Get AI-powered insights on your spending patterns, detect categories, and find savings opportunities.
+              </p>
+            </CardContent>
+            <CardFooter className="pt-0">
               <Button
                 variant="default"
                 size="sm"
-                className="bg-gradient-to-r from-primary/90 to-primary hover:from-primary hover:to-primary/90"
-                onClick={() => receiptInsightsMutation.mutate(1)} // For simplicity, analyzing the first receipt
+                className="w-full"
+                onClick={() => receiptInsightsMutation.mutate(1)} 
                 disabled={receiptInsightsMutation.isPending}
               >
                 {receiptInsightsMutation.isPending ? (
@@ -206,30 +172,30 @@ const Insights = () => {
                   </>
                 )}
               </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardFooter>
+          </Card>
 
-        {/* Generate Weekly Digest Card */}
-        <Card className="border-2 border-dashed border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center font-medium text-primary">
-              <BookOpen className="h-5 w-5 mr-2" />
-              Weekly Financial Digest
-            </CardTitle>
-            <CardDescription>
-              Generate a comprehensive weekly summary
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600 mb-4">
-              Get a personalized summary of your financial activity, including spending trends, budget status, and recommendations.
-            </p>
-            <div className="flex justify-end">
+          {/* Generate Weekly Digest Card */}
+          <Card className="border-l-4 border-l-blue-500 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center font-medium">
+                <BookOpen className="h-5 w-5 mr-2 text-blue-500" />
+                Weekly Digest
+              </CardTitle>
+              <CardDescription>
+                Get a financial summary
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600">
+                Receive a comprehensive weekly report with spending trends, budget status, and personalized recommendations.
+              </p>
+            </CardContent>
+            <CardFooter className="pt-0">
               <Button
-                variant="default"
+                variant="outline"
                 size="sm"
-                className="bg-gradient-to-r from-primary/90 to-primary hover:from-primary hover:to-primary/90"
+                className="w-full border-blue-200 hover:border-blue-500 hover:bg-blue-50"
                 onClick={() => weeklyDigestMutation.mutate()}
                 disabled={weeklyDigestMutation.isPending}
               >
@@ -241,59 +207,213 @@ const Insights = () => {
                 ) : (
                   <>
                     <BookOpen className="mr-2 h-4 w-4" />
-                    Generate Weekly Digest
+                    Generate Digest
                   </>
                 )}
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardFooter>
+          </Card>
 
-      {/* Explanation Card */}
-      <Card>
-        <CardContent className="pt-6">
-          <h2 className="text-lg font-medium mb-4">About AI Financial Insights</h2>
-          <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-800 mb-2">How it Works</h3>
-              <p className="text-sm text-gray-600">
-                Smart Ledger analyzes your spending patterns and financial data to generate personalized insights. Our AI identifies optimization opportunities, detects recurring expenses, and provides actionable recommendations to improve your financial health.
-              </p>
+          {/* Types of Insights Explanation */}
+          <Card className="mt-6 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center font-medium">
+                <LightbulbIcon className="h-5 w-5 mr-2 text-amber-500" />
+                Types of Insights
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-start">
+                  <PiggyBank className="h-4 w-4 mr-2 text-green-600 mt-0.5" />
+                  <div>
+                    <h3 className="text-sm font-medium text-green-700">Savings</h3>
+                    <p className="text-xs text-gray-600">
+                      Money-saving opportunities from your spending habits
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <AlertTriangle className="h-4 w-4 mr-2 text-red-600 mt-0.5" />
+                  <div>
+                    <h3 className="text-sm font-medium text-red-700">Budget Alerts</h3>
+                    <p className="text-xs text-gray-600">
+                      Notifications when approaching or exceeding budgets
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <RepeatIcon className="h-4 w-4 mr-2 text-yellow-600 mt-0.5" />
+                  <div>
+                    <h3 className="text-sm font-medium text-yellow-700">Recurring Expenses</h3>
+                    <p className="text-xs text-gray-600">
+                      Automatic detection of recurring payments
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start">
+                  <FileText className="h-4 w-4 mr-2 text-blue-600 mt-0.5" />
+                  <div>
+                    <h3 className="text-sm font-medium text-blue-700">Weekly Digest</h3>
+                    <p className="text-xs text-gray-600">
+                      Summary of your financial activity and personalized advice
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right column: Insights List with Tabs */}
+        <div className="lg:col-span-2">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Insights</h2>
+          
+          <Tabs 
+            defaultValue="all" 
+            onValueChange={setActiveTab}
+            className="mb-6"
+          >
+            <div className="border rounded-lg overflow-hidden mb-6">
+              <TabsList className="flex w-full justify-start rounded-none bg-gray-50 p-0 border-b">
+                {Object.keys(countByType).map((tabKey) => (
+                  <TabsTrigger 
+                    key={tabKey}
+                    value={tabKey} 
+                    className="flex items-center data-[state=active]:bg-white data-[state=active]:shadow-none rounded-none border-r last:border-r-0 py-2 px-4"
+                  >
+                    {getTabIcon(tabKey)}
+                    <span>{getTabName(tabKey)}</span>
+                    <Badge variant="secondary" className="ml-2 bg-gray-100">
+                      {countByType[tabKey]}
+                    </Badge>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              {Object.keys(countByType).map((tabKey) => (
+                <TabsContent key={tabKey} value={tabKey} className="p-4 bg-white">
+                  {isLoading ? (
+                    <div className="space-y-4">
+                      {[...Array(3)].map((_, index) => (
+                        <Card key={index} className="bg-gray-50 border-gray-100">
+                          <CardContent className="p-6">
+                            <div className="flex items-start">
+                              <Skeleton className="h-10 w-10 rounded-full mr-4" />
+                              <div className="flex-1 space-y-2">
+                                <Skeleton className="h-4 w-1/3" />
+                                <Skeleton className="h-3 w-full" />
+                                <Skeleton className="h-3 w-full" />
+                                <Skeleton className="h-3 w-2/3" />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : filteredInsights?.length > 0 ? (
+                    <div className="space-y-4">
+                      {filteredInsights.map((insight: any) => (
+                        <InsightCard key={insight.id} insight={insight} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-10">
+                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                        <LightbulbIcon className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-700 mb-2">No insights yet</h3>
+                      <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
+                        Generate your first insights by analyzing your receipts or creating a weekly digest.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mx-auto"
+                        onClick={() => {
+                          if (tabKey === 'digest') {
+                            weeklyDigestMutation.mutate();
+                          } else {
+                            receiptInsightsMutation.mutate(1);
+                          }
+                        }}
+                      >
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Generate {tabKey === 'digest' ? 'Weekly Digest' : 'Insights'}
+                      </Button>
+                    </div>
+                  )}
+                </TabsContent>
+              ))}
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-green-50 p-4 rounded-lg border border-green-100">
-                <h3 className="text-sm font-medium text-green-800 mb-2">Savings Suggestions</h3>
-                <p className="text-sm text-green-700">
-                  Identifies opportunities to save money through bulk purchases, cheaper alternatives, or subscription optimizations.
-                </p>
+          </Tabs>
+
+          {/* How It Works Section */}
+          <div className="mt-8">
+            <h3 className="text-lg font-medium mb-4 flex items-center">
+              <BookOpen className="h-5 w-5 mr-2 text-gray-600" />
+              How AI Financial Insights Works
+            </h3>
+            <div className="bg-gradient-to-r from-white to-gray-50 rounded-lg p-5 border">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                <div className="flex items-start">
+                  <div className="bg-primary/10 p-2 rounded-full mr-4">
+                    <Receipt className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium mb-1">1. Data Collection</h4>
+                    <p className="text-xs text-gray-600">
+                      Smart Ledger securely collects and processes your receipt data
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start">
+                  <div className="bg-primary/10 p-2 rounded-full mr-4">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium mb-1">2. AI Analysis</h4>
+                    <p className="text-xs text-gray-600">
+                      Advanced AI algorithms detect patterns and analyze your transactions
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start">
+                  <div className="bg-primary/10 p-2 rounded-full mr-4">
+                    <LightbulbIcon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium mb-1">3. Insights Generation</h4>
+                    <p className="text-xs text-gray-600">
+                      AI creates personalized insights based on your unique financial profile
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start">
+                  <div className="bg-primary/10 p-2 rounded-full mr-4">
+                    <ArrowRightIcon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium mb-1">4. Actionable Recommendations</h4>
+                    <p className="text-xs text-gray-600">
+                      Turn insights into action with specific suggestions to improve your finances
+                    </p>
+                  </div>
+                </div>
               </div>
               
-              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100">
-                <h3 className="text-sm font-medium text-yellow-800 mb-2">Recurring Expense Detection</h3>
-                <p className="text-sm text-yellow-700">
-                  Automatically identifies recurring expenses and subscriptions to help you track and manage your regular payments.
-                </p>
-              </div>
-              
-              <div className="bg-red-50 p-4 rounded-lg border border-red-100">
-                <h3 className="text-sm font-medium text-red-800 mb-2">Budget Alerts</h3>
-                <p className="text-sm text-red-700">
-                  Notifies you when you're approaching or exceeding your predefined category budgets to help you stay on track.
-                </p>
-              </div>
-              
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                <h3 className="text-sm font-medium text-blue-800 mb-2">Weekly Smart Digest</h3>
-                <p className="text-sm text-blue-700">
-                  Provides a weekly summary of your spending, highlights budget concerns, and offers personalized financial tips.
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <p className="text-xs text-gray-500">
+                  All analysis happens securely on our servers. Your data is never shared with third parties.
                 </p>
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };
