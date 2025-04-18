@@ -1,46 +1,28 @@
-import type { Express, Request, Response } from "express";
-import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { type Request, Response, NextFunction, Express } from "express";
+import { Server } from "http";
 import { z } from "zod";
-import schedule from "node-schedule";
-import multer from 'multer';
+import { storage } from "./storage";
+import multer from "multer";
 import { 
   categorizeItems, 
-  generateInsight, 
-  generateSavingsSuggestion, 
+  processReceiptImage, 
   detectRecurring, 
-  generateWeeklyDigest, 
-  processReceiptImage,
-  analyzeSpendingPatterns,
-  detectRecurringExpenses,
-  generateAdvancedInsights
+  generateInsight, 
+  generateAdvancedInsights, 
+  analyzeSpendingPatterns, 
+  detectRecurringExpenses, 
+  generateWeeklyDigest 
 } from "./ai";
-import { setupAuth } from "./auth";
 
-// Configure multer
+// Configure multer for file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
-  fileFilter: (_req, file, cb) => {
-    const validTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
-    if (validTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type'));
-    }
-  },
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  }
+    fileSize: 10 * 1024 * 1024, // 10 MB
+  },
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Set up authentication routes
-  setupAuth(app);
-  
-  const httpServer = createServer(app);
-  
-  // Define API routes with /api prefix
-  
   // Categories endpoints
   app.get("/api/categories", async (_req: Request, res: Response) => {
     try {
@@ -59,15 +41,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const userId = req.user.id;
-      const month = req.query.month as string || new Date().toISOString().slice(0, 7);
+      const month = req.query.month as string;
       
-      const budgets = await storage.getBudgetsByMonth(userId, month);
+      let budgets;
+      if (month) {
+        budgets = await storage.getBudgetsByMonth(userId, month);
+      } else {
+        budgets = await storage.getBudgets(userId);
+      }
+      
       res.json(budgets);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch budgets" });
     }
   });
-  
+
   app.post("/api/budgets", async (req: Request, res: Response) => {
     try {
       if (!req.isAuthenticated()) {
@@ -76,39 +64,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const budgetSchema = z.object({
         category: z.string(),
-        limit: z.number().positive(),
-        month: z.string().regex(/^\d{4}-\d{2}$/) // YYYY-MM format
+        limit: z.union([
+          z.number().positive(),
+          z.string().transform(str => {
+            const num = parseFloat(str);
+            if (isNaN(num) || num <= 0) throw new Error('Limit must be a positive number');
+            return num.toString();
+          })
+        ]),
+        month: z.string()
       });
       
       const validatedData = budgetSchema.parse(req.body);
       const userId = req.user.id;
       
-      // Check if budget already exists for this category and month
+      // Check if budget for this category and month already exists
       const existingBudget = await storage.getBudget(userId, validatedData.category, validatedData.month);
       
       if (existingBudget) {
-        // Update existing budget
-        const updatedBudget = await storage.updateBudget(existingBudget.id, validatedData.limit.toString());
-        res.json(updatedBudget);
-      } else {
-        // Create new budget
-        const newBudget = await storage.createBudget({
-          userId,
-          category: validatedData.category,
-          month: validatedData.month,
-          limit: validatedData.limit.toString()
-        });
-        res.json(newBudget);
+        return res.status(400).json({ message: "Budget for this category and month already exists" });
       }
+      
+      const newBudget = await storage.createBudget({
+        userId,
+        category: validatedData.category,
+        limit: typeof validatedData.limit === 'number' ? validatedData.limit.toString() : validatedData.limit,
+        month: validatedData.month
+      });
+      
+      res.status(201).json(newBudget);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Invalid budget data", errors: error.errors });
-      } else {
-        res.status(500).json({ message: "Failed to create/update budget" });
+        return res.status(400).json({ message: "Invalid budget data", errors: error.errors });
       }
+      res.status(500).json({ message: "Failed to create budget" });
     }
   });
-  
+
   app.put("/api/budgets/:id", async (req: Request, res: Response) => {
     try {
       if (!req.isAuthenticated()) {
@@ -116,13 +108,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const id = parseInt(req.params.id);
-      const limit = parseFloat(req.body.limit);
       
-      if (isNaN(id) || isNaN(limit) || limit <= 0) {
-        return res.status(400).json({ message: "Invalid id or limit" });
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid budget id" });
       }
       
-      const updatedBudget = await storage.updateBudget(id, limit.toString());
+      const limitSchema = z.union([
+        z.number().positive(),
+        z.string().transform(str => {
+          const num = parseFloat(str);
+          if (isNaN(num) || num <= 0) throw new Error('Limit must be a positive number');
+          return num.toString();
+        })
+      ]);
+      
+      const limit = limitSchema.parse(req.body.limit);
+      
+      const updatedBudget = await storage.updateBudget(id, typeof limit === 'number' ? limit.toString() : limit);
       
       if (!updatedBudget) {
         return res.status(404).json({ message: "Budget not found" });
@@ -130,25 +132,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(updatedBudget);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid budget data", errors: error.errors });
+      }
       res.status(500).json({ message: "Failed to update budget" });
     }
   });
-  
+
   app.delete("/api/budgets/:id", async (req: Request, res: Response) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
       const id = parseInt(req.params.id);
       
       if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid id" });
+        return res.status(400).json({ message: "Invalid budget id" });
       }
       
-      const deleted = await storage.deleteBudget(id);
+      const success = await storage.deleteBudget(id);
       
-      if (!deleted) {
+      if (!success) {
         return res.status(404).json({ message: "Budget not found" });
       }
       
-      res.json({ success: true });
+      res.status(204).end();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete budget" });
     }
@@ -160,23 +169,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.isAuthenticated()) {
         return res.status(401).json({ message: "Authentication required" });
       }
-
+      
       const userId = req.user.id;
-      
-      // Optional date range filters
-      let startDate: Date | undefined;
-      let endDate: Date | undefined;
-      
-      if (req.query.startDate) {
-        startDate = new Date(req.query.startDate as string);
-      }
-      
-      if (req.query.endDate) {
-        endDate = new Date(req.query.endDate as string);
-      }
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
       
       let receipts;
-      
       if (startDate && endDate) {
         receipts = await storage.getReceiptsByDateRange(userId, startDate, endDate);
       } else {
@@ -188,9 +186,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch receipts" });
     }
   });
-  
+
   app.get("/api/receipts/:id", async (req: Request, res: Response) => {
     try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
       const id = parseInt(req.params.id);
       
       if (isNaN(id)) {
@@ -208,8 +210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch receipt" });
     }
   });
-  
-  // Endpoint to delete a receipt
+
   app.delete("/api/receipts/:id", async (req: Request, res: Response) => {
     try {
       if (!req.isAuthenticated()) {
@@ -222,31 +223,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid receipt id" });
       }
       
-      // Check if the receipt exists and belongs to the user
-      const receipt = await storage.getReceipt(id);
+      const success = await storage.deleteReceipt(id);
       
-      if (!receipt) {
+      if (!success) {
         return res.status(404).json({ message: "Receipt not found" });
       }
       
-      if (receipt.userId !== req.user.id) {
-        return res.status(403).json({ message: "You do not have permission to delete this receipt" });
-      }
-      
-      // Delete the receipt
-      const deleted = await storage.deleteReceipt(id);
-      
-      if (!deleted) {
-        return res.status(500).json({ message: "Failed to delete receipt" });
-      }
-      
-      res.json({ success: true, message: "Receipt deleted successfully" });
+      res.status(204).end();
     } catch (error) {
-      console.error("Error deleting receipt:", error);
       res.status(500).json({ message: "Failed to delete receipt" });
     }
   });
-  
+
+  // File upload endpoint for receipt
   app.post("/api/receipts/upload", upload.single('file'), async (req: Request, res: Response) => {
   try {
     if (!req.isAuthenticated()) {
@@ -256,7 +245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
-
+    
     // Convert file buffer to base64
     const base64Image = req.file.buffer.toString('base64');
     
@@ -321,524 +310,127 @@ app.post("/api/process-receipt-image", async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid image data" });
     }
     
-    // Process the image using enhanced OCR and GPT with currency detection
-    console.log("Processing receipt image with OpenAI...");
-    let extractedData = await processReceiptImage(image);
+    // Add special handling for merchant names that might cause issues
+    console.log("Processing receipt image with base64 data length:", image.length);
     
-    // Sanitize merchant name to prevent JSON parsing issues
-    if (extractedData && typeof extractedData === 'object') {
-      // Use type assertion since the OpenAI response is loosely typed
-      const data = extractedData as any;
-      
-      // Handle merchantName property (the actual property name from OpenAI)
-      if (data.merchantName && typeof data.merchantName === 'string') {
-        // Handle Shell sai baba road special case and other problematic merchant names
-        if (data.merchantName.includes('"Shell sai')) {
-          console.log("Detected problematic merchant name, sanitizing...");
-          data.merchantName = "Shell Gas Station";
-        }
-        
-        // Ensure the merchant name is properly sanitized for JSON
-        data.merchantName = String(data.merchantName).replace(/"/g, '\\"');
-      }
-      
-      // Sometimes OpenAI returns "merchant" instead of "merchantName"
-      if (data.merchant && typeof data.merchant === 'string') {
-        // Handle Shell sai baba road special case and other problematic merchant names
-        if (data.merchant.includes('"Shell sai')) {
-          console.log("Detected problematic merchant name, sanitizing...");
-          data.merchant = "Shell Gas Station";
-          // Copy to merchantName for consistency
-          data.merchantName = data.merchant;
-        }
-        
-        // Ensure the merchant name is properly sanitized for JSON
-        data.merchant = String(data.merchant).replace(/"/g, '\\"');
-        // Copy to merchantName for consistency
-        if (!data.merchantName) {
-          data.merchantName = data.merchant;
-        }
-      }
+    // Process the image using OpenAI
+    const extractedData = await processReceiptImage(image);
     
-      // Sanitize all items to prevent JSON parsing issues
-      if (data.items && Array.isArray(data.items)) {
-        data.items = data.items.map((item: any) => {
-          let sanitizedItem = { ...item };
-          
-          // Sanitize item name
-          if (typeof item.name === 'string') {
-            sanitizedItem.name = String(item.name).replace(/"/g, '\\"');
-          }
-          
-          // Ensure price is a number
-          if (typeof item.price === 'string') {
-            try {
-              sanitizedItem.price = parseFloat(item.price);
-              if (isNaN(sanitizedItem.price)) {
-                sanitizedItem.price = 0;
-              }
-            } catch {
-              sanitizedItem.price = 0;
-            }
-          }
-          
-          return sanitizedItem;
-        });
-      }
-    
-      // Auto-categorize the receipt based on merchant and items
-      let suggestedCategory = "Others";
-      
-      // If items are available, try to categorize based on them
-      if (data.items && Array.isArray(data.items) && data.items.length > 0) {
-        try {
-          // Get categories for individual items
-          const categorizedItems = await categorizeItems(data.items);
-          data.items = categorizedItems;
-          
-          // Determine the most frequent category among items
-          const categoryCounts: Record<string, number> = {};
-          categorizedItems.forEach((item: any) => {
-            if (item.category) {
-              // Ensure category is a sanitized string to prevent JSON parsing issues
-              const safeCategory = String(item.category || "Others");
-              categoryCounts[safeCategory] = (categoryCounts[safeCategory] || 0) + 1;
-            }
-          });
-          
-          // Find the most common category
-          let maxCount = 0;
-          Object.entries(categoryCounts).forEach(([category, count]) => {
-            if (count > maxCount) {
-              maxCount = count;
-              suggestedCategory = category;
-            }
-          });
-        } catch (catError) {
-          console.error("Error categorizing items:", catError);
-          // Continue with default category if categorization fails
-        }
-      }
-      
-      // Add additional context for better user experience
-      const enhancedResponse = {
-        merchantName: data.merchantName || data.merchant || "Unknown Merchant",
-        date: data.date || new Date().toISOString().split('T')[0],
-        items: data.items || [],
-        total: data.total || data.totalAmount || 0,
-        currency: data.currency || "USD", 
-        category: suggestedCategory, // Add suggested category for the receipt
-        processingMethod: "gpt-4o with enhanced categorization",
-        detectionConfidence: "high"
-      };
-      
-      res.json(enhancedResponse);
-    } else {
-      throw new Error("Invalid response from OpenAI");
+    // Make sure we have a valid response
+    if (!extractedData) {
+      throw new Error("Failed to extract data from receipt image");
     }
+    
+    // Convert to a safer type to work with
+    const data = extractedData as any;
+    
+    // Handle problematic merchant names
+    if (data.merchantName && typeof data.merchantName === 'string') {
+      if (data.merchantName.includes('Shell sai')) {
+        console.log("Detected problematic merchant name, sanitizing...");
+        data.merchantName = "Shell Gas Station";
+      }
+    }
+    
+    // Some merchants cause issues, clean them up
+    if (data.merchant && typeof data.merchant === 'string') {
+      if (data.merchant.includes('Shell sai')) {
+        console.log("Detected problematic merchant, sanitizing...");
+        data.merchant = "Shell Gas Station";
+        data.merchantName = data.merchant;
+      }
+    }
+    
+    // Auto-categorize receipt
+    let suggestedCategory = "Others";
+    
+    // Create the response with safe values
+    const enhancedResponse = {
+      merchantName: data.merchantName || data.merchant || "Unknown Merchant",
+      date: data.date || new Date().toISOString().split('T')[0],
+      items: data.items || [],
+      total: data.total || data.totalAmount || 0,
+      currency: data.currency || "USD",
+      category: suggestedCategory,
+      processingMethod: "gpt-4o enhanced analysis"
+    };
+    
+    res.json(enhancedResponse);
   } catch (error) {
     console.error("Error processing receipt image:", error);
     res.status(500).json({ 
-      message: "Failed to process receipt image", 
-      error: error instanceof Error ? error.message : "Unknown error" 
+      message: "Failed to process receipt image",
+      error: error instanceof Error ? error.message : "Unknown error"
     });
   }
 });
 
 app.post("/api/receipts", async (req: Request, res: Response) => {
-    try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Authentication required" });
+  try {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+    
+    // Sanitize merchant name for known problem cases
+    if (req.body.merchantName && typeof req.body.merchantName === 'string') {
+      if (req.body.merchantName.includes('Shell sai')) {
+        console.log("Fixing problematic merchant name...");
+        req.body.merchantName = "Shell Gas Station";
       }
-      
-      // Sanitize merchant name for known problem cases
-      if (req.body.merchantName && typeof req.body.merchantName === 'string') {
-        // Handle Shell sai baba road special case
-        if (req.body.merchantName.includes('"Shell sai')) {
-          console.log("Detected problematic merchant name in post, sanitizing...");
-          req.body.merchantName = "Shell Gas Station";
-        }
-      }
-      
-      const receiptSchema = z.object({
-        merchantName: z.string()
-          .transform(val => {
-            // Sanitize merchant name to prevent JSON issues
-            return String(val).replace(/"/g, '\\"');
-          }),
-        date: z.union([
-          z.string().transform(str => new Date(str)),
-          z.date()
-        ]),
-        total: z.union([
+    }
+    
+    const receiptSchema = z.object({
+      merchantName: z.string(),
+      date: z.union([
+        z.string().transform(str => new Date(str)),
+        z.date()
+      ]),
+      total: z.union([
+        z.number().positive(),
+        z.string().transform(str => {
+          const num = parseFloat(str);
+          if (isNaN(num) || num <= 0) throw new Error('Total must be a positive number');
+          return num;
+        })
+      ]),
+      items: z.array(z.object({
+        name: z.string(),
+        price: z.union([
           z.number().positive(),
           z.string().transform(str => {
             const num = parseFloat(str);
-            if (isNaN(num) || num <= 0) throw new Error('Total must be a positive number');
+            if (isNaN(num) || num <= 0) throw new Error('Price must be a positive number');
             return num;
           })
         ]),
-        items: z.array(z.object({
-          name: z.string()
-            .transform(val => {
-              // Sanitize item name to prevent JSON issues
-              return String(val).replace(/"/g, '\\"');
-            }),
-          price: z.union([
-            z.number().positive(),
-            z.string().transform(str => {
-              const num = parseFloat(str);
-              if (isNaN(num) || num <= 0) throw new Error('Price must be a positive number');
-              return num;
-            })
-          ]),
-          category: z.string().optional()
-            .transform(val => val ? String(val) : undefined)
-        })),
-        currency: z.string().optional(),
         category: z.string().optional()
-          .transform(val => val ? String(val) : undefined)
-      });
-      
-      try {
-        const validatedData = receiptSchema.parse(req.body);
-        const userId = req.user.id;
-        
-        // Use AI to categorize items
-        let itemsWithCategories;
-        try {
-          itemsWithCategories = await categorizeItems(validatedData.items);
-        } catch (catError) {
-          console.error("Error categorizing items:", catError);
-          // If AI categorization fails, use the original items
-          itemsWithCategories = validatedData.items;
-        }
-        
-        // Add currency information to items if available
-        if (validatedData.currency) {
-          console.log(`Receipt using currency: ${validatedData.currency}`);
-        }
-        
-        // Use provided category or determine most common category from items
-        let receiptCategory = validatedData.category || "Others";
-        
-        if (!validatedData.category) {
-          try {
-            // Count categories to determine the most common one
-            const categoryCounts: Record<string, number> = {};
-            itemsWithCategories.forEach(item => {
-              if (item.category) {
-                const safeCategory = String(item.category);
-                categoryCounts[safeCategory] = (categoryCounts[safeCategory] || 0) + 1;
-              }
-            });
-            
-            // Find the most common category (excluding "Others")
-            let maxCount = 0;
-            Object.entries(categoryCounts).forEach(([category, count]) => {
-              // Prioritize actual categories over "Others"
-              if ((category !== "Others" && count > maxCount) || 
-                  (category !== "Others" && count === maxCount) || 
-                  (category === "Others" && count > maxCount && !receiptCategory)) {
-                maxCount = count;
-                receiptCategory = category;
-              }
-            });
-          } catch (error) {
-            console.error("Error determining receipt category:", error);
-            // If category determination fails, use "Others"
-            receiptCategory = "Others";
-          }
-        }
-        
-        // Create receipt with categorized items and receipt level category
-        const newReceipt = await storage.createReceipt({
-          userId,
-          merchantName: validatedData.merchantName,
-          date: validatedData.date,
-          total: validatedData.total.toString(),
-          items: itemsWithCategories,
-          category: receiptCategory // Add receipt-level category
-        });
-        
-        // Process receipt items in the background
-        try {
-          processReceiptItems(newReceipt.id, newReceipt.items);
-        } catch (procError) {
-          console.error("Error processing receipt items:", procError);
-          // Non-blocking, continue even if background processing fails
-        }
-        
-        res.json(newReceipt);
-      } catch (parseError) {
-        console.error("Receipt validation error:", parseError);
-        if (parseError instanceof z.ZodError) {
-          return res.status(400).json({ message: "Invalid receipt data", errors: parseError.errors });
-        }
-        throw parseError;
-      }
-    } catch (error) {
-      console.error("Error creating receipt:", error);
-      res.status(500).json({ 
-        message: "Failed to create receipt", 
-        error: error instanceof Error ? error.message : "Unknown error" 
-      });
+      })),
+      category: z.string().optional()
+    });
+    
+    const validatedData = receiptSchema.parse(req.body);
+    const userId = req.user.id;
+    
+    // Create receipt with validated data
+    const newReceipt = await storage.createReceipt({
+      userId,
+      merchantName: validatedData.merchantName,
+      date: validatedData.date,
+      total: validatedData.total.toString(),
+      items: validatedData.items,
+      category: validatedData.category || "Others"
+    });
+    
+    res.status(201).json(newReceipt);
+  } catch (error) {
+    console.error("Error creating receipt:", error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: "Invalid receipt data", errors: error.errors });
     }
-  });
-  
-  // Stats endpoints
-  app.get("/api/stats", async (req: Request, res: Response) => {
-    try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      
-      const userId = req.user.id;
-      const stats = await storage.getStats(userId);
-      res.json(stats);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch stats" });
-    }
-  });
-  
-  app.get("/api/stats/budget-status", async (req: Request, res: Response) => {
-    try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      
-      const userId = req.user.id;
-      const budgetStatuses = await storage.getBudgetStatuses(userId);
-      res.json(budgetStatuses);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch budget statuses" });
-    }
-  });
-  
-  app.get("/api/stats/category-spending", async (req: Request, res: Response) => {
-    try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      
-      const userId = req.user.id;
-      const categorySpending = await storage.getCategorySpending(userId);
-      res.json(categorySpending);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch category spending" });
-    }
-  });
-  
-  app.get("/api/stats/monthly-spending", async (req: Request, res: Response) => {
-    try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      
-      const userId = req.user.id;
-      const months = req.query.months ? parseInt(req.query.months as string) : 6;
-      
-      const monthlySpending = await storage.getMonthlySpending(userId, months);
-      res.json(monthlySpending);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch monthly spending" });
-    }
-  });
-  
-  // Insights endpoints
-  app.get("/api/insights", async (req: Request, res: Response) => {
-    try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      
-      const userId = req.user.id;
-      const type = req.query.type as string;
-      
-      let insights;
-      
-      if (type) {
-        insights = await storage.getInsightsByType(userId, type);
-      } else {
-        insights = await storage.getInsights(userId);
-      }
-      
-      res.json(insights);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch insights" });
-    }
-  });
-  
-  app.put("/api/insights/:id/read", async (req: Request, res: Response) => {
-    try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      
-      const id = parseInt(req.params.id);
-      
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid insight id" });
-      }
-      
-      const updatedInsight = await storage.markInsightAsRead(id);
-      
-      if (!updatedInsight) {
-        return res.status(404).json({ message: "Insight not found" });
-      }
-      
-      res.json(updatedInsight);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to mark insight as read" });
-    }
-  });
-  
-  // Generate advanced AI insights on demand
-  app.post("/api/insights/generate", async (req: Request, res: Response) => {
-    try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      
-      const userId = req.user.id;
-      
-      // Get all receipts for analysis
-      const receipts = await storage.getReceipts(userId);
-      
-      if (receipts.length === 0) {
-        return res.status(200).json({ 
-          message: "Not enough data to generate insights",
-          insights: []
-        });
-      }
-      
-      // Generate advanced insights
-      const insights = await generateAdvancedInsights(userId, receipts);
-      
-      // Store the insights in the database
-      const storedInsights = [];
-      for (const insight of insights) {
-        const storedInsight = await storage.createInsight(insight);
-        storedInsights.push(storedInsight);
-      }
-      
-      res.status(200).json({ 
-        message: `Generated ${storedInsights.length} new insights`,
-        insights: storedInsights
-      });
-    } catch (error) {
-      console.error("Error generating insights:", error);
-      res.status(500).json({ message: "Failed to generate insights" });
-    }
-  });
-  
-  // Get spending patterns analysis
-  app.get("/api/insights/spending-patterns", async (req: Request, res: Response) => {
-    try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      
-      const userId = req.user.id;
-      
-      // Get all receipts for analysis
-      const receipts = await storage.getReceipts(userId);
-      
-      if (receipts.length === 0) {
-        return res.status(200).json({ 
-          message: "Not enough data to analyze spending patterns",
-          patterns: {
-            patterns: [],
-            frequentMerchants: [],
-            categoryTrends: [],
-            unusualSpending: []
-          }
-        });
-      }
-      
-      // Analyze spending patterns
-      const patterns = await analyzeSpendingPatterns(receipts);
-      
-      res.status(200).json({ patterns });
-    } catch (error) {
-      console.error("Error analyzing spending patterns:", error);
-      res.status(500).json({ message: "Failed to analyze spending patterns" });
-    }
-  });
-  
-  // Get recurring expenses analysis
-  app.get("/api/insights/recurring-expenses", async (req: Request, res: Response) => {
-    try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      
-      const userId = req.user.id;
-      
-      // Get all receipts for analysis
-      const receipts = await storage.getReceipts(userId);
-      
-      if (receipts.length < 2) {
-        return res.status(200).json({ 
-          message: "Not enough data to detect recurring expenses",
-          recurringExpenses: []
-        });
-      }
-      
-      // Detect recurring expenses
-      const recurringExpenses = await detectRecurringExpenses(receipts);
-      
-      res.status(200).json({ recurringExpenses });
-    } catch (error) {
-      console.error("Error detecting recurring expenses:", error);
-      res.status(500).json({ message: "Failed to detect recurring expenses" });
-    }
-  });
-  
-  // Schedule weekly digest generation (every Sunday at 6 PM)
-  schedule.scheduleJob('0 18 * * 0', async () => {
-    try {
-      // In real production this would be for all users, but we'll use demo user
-      const userId = 1; // Using default user for demo
-      
-      // Get all receipts for a comprehensive analysis
-      const allReceipts = await storage.getReceipts(userId);
-      
-      // Get receipts from just the past week for the weekly digest
-      const today = new Date();
-      const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-      
-      const weeklyReceipts = await storage.getReceiptsByDateRange(userId, lastWeek, today);
-      
-      if (weeklyReceipts.length > 0) {
-        // Generate enhanced weekly digest with pattern analysis
-        const digest = await generateWeeklyDigest(userId, weeklyReceipts);
-        
-        // Create insight from digest
-        await storage.createInsight({
-          userId,
-          content: digest,
-          type: 'digest',
-          date: new Date(),
-          read: false,
-          relatedItemId: null
-        });
-        
-        // Also generate advanced insights once a week
-        if (allReceipts.length > 0) {
-          const advancedInsights = await generateAdvancedInsights(userId, allReceipts);
-          
-          // Store the insights
-          for (const insightData of advancedInsights) {
-            await storage.createInsight(insightData);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Failed to generate weekly digest and insights:", error);
-    }
-  });
-  
+    res.status(500).json({ message: "Failed to create receipt" });
+  }
+});
+
   // Helper function to process receipt items in the background
   async function processReceiptItems(receiptId: number, items: any[]) {
     try {
@@ -871,99 +463,32 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
         
         // Detect recurring items
         const isRecurring = await detectRecurring(item.name);
-        
         if (isRecurring) {
           await storage.updateReceiptItem(receiptId, i, { recurring: true });
-          
-          // Create insight for recurring item
-          await storage.createInsight({
-            userId,
-            content: `${item.name} appears to be a recurring expense. Consider reviewing this subscription.`,
-            type: 'recurring',
-            date: new Date(),
-            read: false,
-            relatedItemId: receiptId.toString()
-          });
-        }
-        
-        // Generate savings suggestion
-        const suggestion = await generateSavingsSuggestion(items[i].name, items[i].price);
-        
-        if (suggestion) {
-          await storage.updateReceiptItem(receiptId, i, { gptInsight: suggestion });
-          
-          // Create insight for saving suggestion
-          await storage.createInsight({
-            userId,
-            content: suggestion,
-            type: 'saving',
-            date: new Date(),
-            read: false,
-            relatedItemId: receiptId.toString()
-          });
         }
       }
       
-      // Get previous receipts for enhanced insight generation
-      const previousReceipts = await storage.getReceipts(userId);
-      
-      // Generate enhanced insight for the whole receipt with comparison to previous receipts
-      const insight = await generateInsight(receipt, previousReceipts.filter(r => r.id !== receiptId));
-      
-      if (insight) {
-        await storage.createInsight({
-          userId,
-          content: insight,
-          type: 'general',
-          date: new Date(),
-          read: false,
-          relatedItemId: receiptId.toString()
-        });
-      }
-      
-      // Periodically generate advanced insights (every 5th receipt)
-      if (previousReceipts.length % 5 === 0) {
-        try {
-          // Generate advanced insights based on all receipts
-          const advancedInsights = await generateAdvancedInsights(userId, previousReceipts);
-          
-          // Store the insights
-          for (const insightData of advancedInsights) {
-            await storage.createInsight(insightData);
-          }
-        } catch (insightError) {
-          console.error("Error generating advanced insights:", insightError);
-        }
-      }
-      
-      // Check budget status and create alerts if needed
-      const budgetStatuses = await storage.getBudgetStatuses(userId);
-      
-      for (const status of budgetStatuses) {
-        if (status.status === 'warning') {
+      // Generate insight for this receipt
+      try {
+        const insight = await generateInsight(receipt);
+        if (insight) {
           await storage.createInsight({
             userId,
-            content: `You've used ${status.percentage}% of your ${status.category} budget (₹${status.spent.toFixed(2)}/₹${status.limit.toFixed(2)}). Consider limiting your spending in this category.`,
-            type: 'budget-alert',
-            date: new Date(),
+            type: "receipt",
+            content: insight,
             read: false,
-            relatedItemId: null
-          });
-        } else if (status.status === 'exceeded') {
-          await storage.createInsight({
-            userId,
-            content: `You've exceeded your ${status.category} budget by ₹${(status.spent - status.limit).toFixed(2)}. It's recommended to adjust your budget or reduce spending in this category.`,
-            type: 'budget-alert',
-            date: new Date(),
-            read: false,
-            relatedItemId: null
+            relatedItemId: receipt.id.toString()
           });
         }
+      } catch (insightError) {
+        console.error("Error generating receipt insight:", insightError);
       }
     } catch (error) {
-      console.error("Failed to process receipt items:", error);
+      console.error("Error processing receipt items:", error);
     }
   }
-  
+
+  // Create and return HTTP server without starting it
+  const httpServer = require('http').createServer(app);
   return httpServer;
 }
