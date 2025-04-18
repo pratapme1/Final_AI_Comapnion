@@ -12,33 +12,30 @@
   }
 }
 
-@layer components {
-  /* Custom toast styles with light green background */
-  .toast-success {
-    @apply bg-green-50 border-green-200 text-green-800;
-  }
-  
-  /* Light input fields */
-  .input-light {
-    @apply bg-white border-gray-200 focus:border-gray-300 focus:ring-gray-200;
-  }
-  
-  /* Override all inputs */
-  .input, 
-  input[type="text"],
-  input[type="password"],
-  input[type="email"],
-  input[type="number"],
-  input[type="tel"],
-  input[type="url"],
-  input[type="date"],
-  textarea,
-  select {
-    @apply bg-white border-gray-200;
-  }
-  
-  /* Green success indicators */
-  .success-icon {
-    @apply text-green-500;
-  }
+/* Custom user styles */
+.form-input,
+.form-select,
+.form-textarea,
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="date"],
+input[type="tel"],
+textarea,
+select {
+  background-color: white !important;
+  border-color: #e5e7eb !important;
+}
+
+/* Toast notification styles */
+div[data-sonner-toast][data-type="success"] {
+  background-color: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #065f46 !important;
+}
+
+/* Success icon color - for when success toasts are shown */
+[data-type="success"] svg {
+  color: #10b981 !important;
 }
