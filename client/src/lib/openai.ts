@@ -122,12 +122,12 @@ export function getInsightTypeInfo(type: string): {
  * Function to create a new budget
  * @param data - Budget data including category, limit, and month
  */
-export async function createBudget(data: { 
-  category: string; 
-  limit: string; 
-  month: string; 
-}): Promise<any> {
-  return await apiRequest('POST', '/api/budgets', data);
+export async function createBudget(
+  category: string,
+  limit: number,
+  month: string
+): Promise<any> {
+  return await apiRequest('POST', '/api/budgets', { category, limit, month });
 }
 
 /**
