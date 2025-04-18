@@ -843,7 +843,8 @@ export async function processReceiptImage(base64Image: string): Promise<{
       }
       
       // Validate and ensure all required fields
-      const merchantName = String(parsedResponse.merchantName || 'Unknown Merchant');
+      // Convert to string and escape any quotes to avoid JSON parsing issues
+      let merchantName = String(parsedResponse.merchantName || 'Unknown Merchant');
       
       // Process date - ensure YYYY-MM-DD format
       let dateValue = parsedResponse.date;
@@ -877,11 +878,16 @@ export async function processReceiptImage(base64Image: string): Promise<{
       const total = typeof totalValue === 'number' ? totalValue : parseFloat(String(totalValue).replace(',', '.'));
       
       // Process items to ensure they have the correct format
-      const items = Array.isArray(parsedResponse.items) ? parsedResponse.items.map((item: any) => ({
-        name: String(item.name || 'Unknown item'),
-        price: typeof item.price === 'number' ? item.price : parseFloat(String(item.price).replace(',', '.')) || 0,
-        quantity: item.quantity || 1
-      })) : [];
+      const items = Array.isArray(parsedResponse.items) ? parsedResponse.items.map((item: any) => {
+        // Escape quotes in item names to avoid JSON parsing issues
+        const itemName = String(item.name || 'Unknown item');
+        
+        return {
+          name: itemName,
+          price: typeof item.price === 'number' ? item.price : parseFloat(String(item.price).replace(',', '.')) || 0,
+          quantity: item.quantity || 1
+        };
+      }) : [];
       
       // Return the finalized, enhanced receipt data
       // Determine the most appropriate category based on merchant name and items

@@ -276,7 +276,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const categoryCounts: Record<string, number> = {};
       categorizedItems.forEach(item => {
         if (item.category && item.category !== "Others") {
-          categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
+          const safeCategory = String(item.category);
+          categoryCounts[safeCategory] = (categoryCounts[safeCategory] || 0) + 1;
         }
       });
       
@@ -334,7 +335,7 @@ app.post("/api/process-receipt-image", async (req: Request, res: Response) => {
       extractedData.items = categorizedItems;
       
       // Determine the most frequent category among items
-      const categoryCounts = {};
+      const categoryCounts: Record<string, number> = {};
       categorizedItems.forEach(item => {
         if (item.category) {
           categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
@@ -345,7 +346,7 @@ app.post("/api/process-receipt-image", async (req: Request, res: Response) => {
       let maxCount = 0;
       Object.entries(categoryCounts).forEach(([category, count]) => {
         if (count > maxCount) {
-          maxCount = count as number;
+          maxCount = count;
           suggestedCategory = category;
         }
       });
