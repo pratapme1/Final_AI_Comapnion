@@ -67,7 +67,7 @@ const StatCards = () => {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      {/* Monthly Spending Card - Blue */}
+      {/* Spending Card - Blue */}
       <div className="overflow-hidden shadow-md rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200">
         <div className="px-4 py-5 sm:p-6">
           <div className="flex justify-between items-start">
@@ -84,13 +84,21 @@ const StatCards = () => {
             </div>
           </div>
           <div className="mt-4">
-            <h3 className="text-sm font-medium text-blue-700">Monthly Spend</h3>
-            <p className="mt-2 text-3xl font-bold text-blue-900">
-              {formatCurrency(statsData.totalSpend)}
-            </p>
-            <p className="mt-2 text-xs text-blue-600">
-              Based on your recent transactions
-            </p>
+            <h3 className="text-sm font-medium text-blue-700">Spending</h3>
+            <div className="mt-2 flex items-baseline">
+              <p className="text-3xl font-bold text-blue-900">
+                {formatCurrency(statsData.totalSpend)}
+              </p>
+              <p className="ml-2 text-sm font-medium text-blue-600">this month</p>
+            </div>
+            <div className="mt-2 flex justify-between items-center">
+              <div className="w-full bg-blue-100 h-1 rounded-full overflow-hidden">
+                <div className="bg-blue-500 h-1 rounded-full" style={{ width: '60%' }}></div>
+              </div>
+              <p className="ml-3 text-xs whitespace-nowrap text-blue-600">
+                {formatCurrency(statsData.totalSpend)} / ₹10,000
+              </p>
+            </div>
           </div>
         </div>
       </div>
