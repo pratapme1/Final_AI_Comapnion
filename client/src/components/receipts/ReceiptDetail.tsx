@@ -145,6 +145,9 @@ const ReceiptDetail = ({ id }: ReceiptDetailProps) => {
             <span>{formatCurrency(Number(receipt.total))}</span>
           </div>
         </div>
+        
+        {/* AI Insights Component - added as a separate section */}
+        <ReceiptAIInsights receiptId={receipt.id} />
       </CardContent>
     </Card>
   );
