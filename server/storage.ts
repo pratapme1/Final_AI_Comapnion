@@ -624,6 +624,7 @@ export class MemStorage implements IStorage {
   }
 }
 
+// Switch to PostgreSQL DatabaseStorage implementation
 export class DatabaseStorage implements IStorage {
   public sessionStore: any; // Fix type issue with session.SessionStore
 
