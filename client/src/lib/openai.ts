@@ -67,6 +67,10 @@ export async function markInsightAsRead(insightId: number) {
   return apiRequest("PUT", `/api/insights/${insightId}/read`, undefined);
 }
 
+export async function generateReceiptInsights(receiptId: number) {
+  return apiRequest("POST", "/api/insights/generate-receipt-insights", { receiptId });
+}
+
 // Helper function to format currency
 export function formatCurrency(amount: number): string {
   console.log("Formatting currency amount:", amount, "type:", typeof amount);

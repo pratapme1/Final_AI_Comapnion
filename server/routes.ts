@@ -561,6 +561,55 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
     }
   });
   
+  // Generate real-time AI insights on demand for a receipt
+  app.post("/api/insights/generate-receipt-insights", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const userId = req.user.id;
+      const { receiptId } = req.body;
+      
+      if (!receiptId) {
+        return res.status(400).json({ message: "Receipt ID is required" });
+      }
+      
+      // Get the receipt by ID
+      const receipt = await storage.getReceipt(receiptId);
+      
+      if (!receipt) {
+        return res.status(404).json({ message: "Receipt not found" });
+      }
+      
+      if (receipt.userId !== userId) {
+        return res.status(403).json({ message: "You don't have permission to view this receipt" });
+      }
+      
+      // Generate the insight using the existing AI feature
+      const insightContent = await generateInsight(receipt);
+      
+      if (!insightContent) {
+        return res.status(500).json({ message: "Failed to generate insight" });
+      }
+      
+      // Save the insight to storage
+      const newInsight = await storage.createInsight({
+        type: "receipt-analysis",
+        date: new Date(),
+        content: insightContent,
+        userId,
+        read: false,
+        relatedItemId: receiptId.toString(),
+      });
+      
+      res.status(201).json(newInsight);
+    } catch (error) {
+      console.error("Error generating receipt insights:", error);
+      res.status(500).json({ message: "Failed to generate insights" });
+    }
+  });
+  
   // Schedule weekly digest generation (every Sunday at 6 PM)
   schedule.scheduleJob('0 18 * * 0', async () => {
     try {

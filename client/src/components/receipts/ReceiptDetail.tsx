@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { Clock, AlertCircle, Lightbulb } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Receipt, ReceiptItem } from "@shared/schema";
+import ReceiptAIInsights from "./ReceiptAIInsights";
 
 interface ReceiptDetailProps {
   id: number;
