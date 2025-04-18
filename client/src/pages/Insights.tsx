@@ -18,7 +18,7 @@ import {
   AlertTriangle, 
   RepeatIcon, 
   FileText, 
-  LightbulbIcon,
+  Lightbulb,
   ArrowRightIcon
 } from "lucide-react";
 
@@ -104,13 +104,13 @@ const Insights = () => {
   // Get icon for each tab
   const getTabIcon = (type: string) => {
     switch (type) {
-      case 'all': return <LightbulbIcon className="h-4 w-4 mr-2" />;
+      case 'all': return <Lightbulb className="h-4 w-4 mr-2" />;
       case 'saving': return <PiggyBank className="h-4 w-4 mr-2" />;
       case 'budget-alert': return <AlertTriangle className="h-4 w-4 mr-2" />;
       case 'recurring': return <RepeatIcon className="h-4 w-4 mr-2" />;
       case 'digest': return <FileText className="h-4 w-4 mr-2" />;
       case 'receipt-analysis': return <Receipt className="h-4 w-4 mr-2" />;
-      default: return <LightbulbIcon className="h-4 w-4 mr-2" />;
+      default: return <Lightbulb className="h-4 w-4 mr-2" />;
     }
   };
 
@@ -129,14 +129,17 @@ const Insights = () => {
 
   return (
     <div className="max-w-6xl mx-auto">
-      {/* Page header */}
-      <div className="mb-6 lg:mb-8 px-2 sm:px-0 text-center">
-        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-          AI Financial Insights
-        </h1>
-        <p className="text-xs sm:text-sm text-gray-500 mt-2 max-w-lg mx-auto">
-          Smart Ledger's AI-powered analysis helps you optimize your finances with personalized recommendations
-        </p>
+      {/* Page header with gradient background */}
+      <div className="rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 p-6 mb-8 text-center sm:text-left">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center justify-center sm:justify-start">
+            <Sparkles className="h-6 w-6 mr-2 text-primary" />
+            AI Financial Insights
+          </h1>
+          <p className="text-sm text-gray-600 mt-1 max-w-lg mx-auto sm:mx-0">
+            Smart Ledger's AI-powered analysis helps you optimize your finances with personalized recommendations
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8 px-2 sm:px-0">
@@ -235,7 +238,7 @@ const Insights = () => {
           <Card className="mt-6 shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center font-medium">
-                <LightbulbIcon className="h-5 w-5 mr-2 text-amber-500" />
+                <Lightbulb className="h-5 w-5 mr-2 text-amber-500" />
                 Types of Insights
               </CardTitle>
             </CardHeader>
@@ -340,7 +343,7 @@ const Insights = () => {
                   ) : (
                     <div className="text-center py-6 sm:py-10">
                       <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gray-100 mb-3 sm:mb-4">
-                        <LightbulbIcon className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400" />
+                        <Lightbulb className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400" />
                       </div>
                       <h3 className="text-base sm:text-lg font-medium text-gray-700 mb-1 sm:mb-2">No insights yet</h3>
                       <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6 max-w-md mx-auto px-2 sm:px-0">
@@ -408,7 +411,7 @@ const Insights = () => {
                 
                 <div className="flex items-start">
                   <div className="bg-primary/10 p-1.5 sm:p-2 rounded-full mr-3 sm:mr-4 shrink-0">
-                    <LightbulbIcon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                    <Lightbulb className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   </div>
                   <div>
                     <h4 className="text-sm font-medium mb-0.5 sm:mb-1">3. Insights Generation</h4>
