@@ -1,7 +1,7 @@
-import { type Request, Response, NextFunction, Express } from "express";
-import { Server } from "http";
-import { z } from "zod";
+import type { Express, Request, Response } from "express";
+import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { z } from "zod";
 import multer from "multer";
 import { 
   categorizeItems, 
@@ -9,10 +9,10 @@ import {
   detectRecurring, 
   generateInsight, 
   generateAdvancedInsights, 
-  analyzeSpendingPatterns, 
-  detectRecurringExpenses, 
-  generateWeeklyDigest 
+  analyzeSpendingPatterns,
+  detectRecurringExpenses
 } from "./ai";
+import { setupAuth } from "./auth";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -23,6 +23,9 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Set up authentication
+  setupAuth(app);
+  
   // Categories endpoints
   app.get("/api/categories", async (_req: Request, res: Response) => {
     try {
@@ -43,8 +46,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const month = req.query.month as string;
       
-      console.log(`Fetching budgets for user: ${userId}, month: ${month || 'all'}`);
-      
       let budgets;
       if (month) {
         budgets = await storage.getBudgetsByMonth(userId, month);
@@ -54,8 +55,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(budgets);
     } catch (error) {
-      console.error('Error fetching budgets:', error);
-      res.status(500).json({ message: "Failed to fetch budgets", error: error instanceof Error ? error.message : String(error) });
+      res.status(500).json({ message: "Failed to fetch budgets" });
     }
   });
 
@@ -177,8 +177,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
       
-      console.log(`Fetching receipts for user: ${userId}, date range: ${startDate?.toISOString() || 'all'} to ${endDate?.toISOString() || 'all'}`);
-      
       let receipts;
       if (startDate && endDate) {
         receipts = await storage.getReceiptsByDateRange(userId, startDate, endDate);
@@ -186,11 +184,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         receipts = await storage.getReceipts(userId);
       }
       
-      console.log(`Found ${receipts.length} receipts`);
       res.json(receipts);
     } catch (error) {
-      console.error('Error fetching receipts:', error);
-      res.status(500).json({ message: "Failed to fetch receipts", error: error instanceof Error ? error.message : String(error) });
+      res.status(500).json({ message: "Failed to fetch receipts" });
     }
   });
 
@@ -244,259 +240,426 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // File upload endpoint for receipt
   app.post("/api/receipts/upload", upload.single('file'), async (req: Request, res: Response) => {
-  try {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Authentication required" });
-    }
-    
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
-    }
-    
-    // Convert file buffer to base64
-    const base64Image = req.file.buffer.toString('base64');
-    
-    // Process the image using enhanced OCR and GPT with currency detection
-    console.log("Processing receipt image with OpenAI...");
-    const extractedData = await processReceiptImage(base64Image);
-    
-    let suggestedCategory = extractedData.category || "Others";
-    
-    // If items are available, try to categorize based on them
-    if (extractedData.items && extractedData.items.length > 0) {
-      // Get categories for individual items
-      const categorizedItems = await categorizeItems(extractedData.items);
-      extractedData.items = categorizedItems;
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
       
-      // Determine the most frequent category among items
-      const categoryCounts: Record<string, number> = {};
-      categorizedItems.forEach(item => {
-        if (item.category && item.category !== "Others") {
-          const safeCategory = String(item.category);
-          categoryCounts[safeCategory] = (categoryCounts[safeCategory] || 0) + 1;
-        }
-      });
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
       
-      // Find the most common category (excluding "Others")
-      let maxCount = 0;
-      Object.entries(categoryCounts).forEach(([category, count]) => {
-        if (count > maxCount) {
-          maxCount = count;
-          suggestedCategory = category;
-        }
-      });
+      // Convert file buffer to base64
+      const base64Image = req.file.buffer.toString('base64');
+      
+      // Process the image using enhanced OCR and GPT with currency detection
+      console.log("Processing receipt image with OpenAI...");
+      const extractedData = await processReceiptImage(base64Image);
+      
+      let suggestedCategory = extractedData.category || "Others";
+      
+      // If items are available, try to categorize based on them
+      if (extractedData.items && extractedData.items.length > 0) {
+        // Get categories for individual items
+        const categorizedItems = await categorizeItems(extractedData.items);
+        extractedData.items = categorizedItems;
+        
+        // Determine the most frequent category among items
+        const categoryCounts: Record<string, number> = {};
+        categorizedItems.forEach(item => {
+          if (item.category && item.category !== "Others") {
+            const safeCategory = String(item.category);
+            categoryCounts[safeCategory] = (categoryCounts[safeCategory] || 0) + 1;
+          }
+        });
+        
+        // Find the most common category (excluding "Others")
+        let maxCount = 0;
+        Object.entries(categoryCounts).forEach(([category, count]) => {
+          if (count > maxCount) {
+            maxCount = count;
+            suggestedCategory = category;
+          }
+        });
+      }
+      
+      // Add additional context for the client
+      const enhancedResponse = {
+        ...extractedData,
+        items: extractedData.items,
+        category: suggestedCategory, // Add suggested category for the receipt
+        processingMethod: "gpt-4o with enhanced categorization",
+        detectionConfidence: "high",
+        originalFilename: req.file.originalname || "unknown"
+      };
+      
+      res.json(enhancedResponse);
+    } catch (error) {
+      console.error("Error processing receipt upload:", error);
+      res.status(500).json({ message: "Failed to process receipt", error: (error as Error).message });
     }
-    
-    // Add additional context for the client
-    const enhancedResponse = {
-      ...extractedData,
-      items: extractedData.items,
-      category: suggestedCategory, // Add suggested category for the receipt
-      processingMethod: "gpt-4o with enhanced categorization",
-      detectionConfidence: "high",
-      originalFilename: req.file.originalname || "unknown"
-    };
-    
-    res.json(enhancedResponse);
-  } catch (error) {
-    console.error("Error processing receipt upload:", error);
-    res.status(500).json({ message: "Failed to process receipt", error: (error as Error).message });
-  }
-});
+  });
 
-// Endpoint for processing receipt image from base64 string
-app.post("/api/process-receipt-image", async (req: Request, res: Response) => {
-  try {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Authentication required" });
-    }
-    
-    const { image } = req.body;
-    
-    if (!image || typeof image !== 'string') {
-      return res.status(400).json({ message: "Invalid image data" });
-    }
-    
-    // Add special handling for merchant names that might cause issues
-    console.log("Processing receipt image with base64 data length:", image.length);
-    
-    // Process the image using OpenAI
-    const extractedData = await processReceiptImage(image);
-    
-    // Make sure we have a valid response
-    if (!extractedData) {
-      throw new Error("Failed to extract data from receipt image");
-    }
-    
-    // Convert to a safer type to work with
-    const data = extractedData as any;
-    
-    // Handle problematic merchant names
-    if (data.merchantName && typeof data.merchantName === 'string') {
-      if (data.merchantName.includes('Shell sai')) {
+  // Endpoint for processing receipt image from base64 string
+  app.post("/api/process-receipt-image", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const { image } = req.body;
+      
+      if (!image || typeof image !== 'string') {
+        return res.status(400).json({ message: "Invalid image data" });
+      }
+      
+      // Process the image using OpenAI
+      console.log("Processing receipt image with base64 data...");
+      const extractedData = await processReceiptImage(image);
+      
+      // Handle problematic merchant names
+      if (typeof extractedData.merchantName === 'string' && extractedData.merchantName.includes('Shell sai')) {
         console.log("Detected problematic merchant name, sanitizing...");
-        data.merchantName = "Shell Gas Station";
+        extractedData.merchantName = "Shell Gas Station";
       }
+      
+      res.json(extractedData);
+    } catch (error) {
+      console.error("Error processing receipt image:", error);
+      res.status(500).json({ 
+        message: "Failed to process receipt image",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
-    
-    // Some merchants cause issues, clean them up
-    if (data.merchant && typeof data.merchant === 'string') {
-      if (data.merchant.includes('Shell sai')) {
-        console.log("Detected problematic merchant, sanitizing...");
-        data.merchant = "Shell Gas Station";
-        data.merchantName = data.merchant;
-      }
-    }
-    
-    // Auto-categorize receipt
-    let suggestedCategory = "Others";
-    
-    // Create the response with safe values
-    const enhancedResponse = {
-      merchantName: data.merchantName || data.merchant || "Unknown Merchant",
-      date: data.date || new Date().toISOString().split('T')[0],
-      items: data.items || [],
-      total: data.total || data.totalAmount || 0,
-      currency: data.currency || "USD",
-      category: suggestedCategory,
-      processingMethod: "gpt-4o enhanced analysis"
-    };
-    
-    res.json(enhancedResponse);
-  } catch (error) {
-    console.error("Error processing receipt image:", error);
-    res.status(500).json({ 
-      message: "Failed to process receipt image",
-      error: error instanceof Error ? error.message : "Unknown error"
-    });
-  }
-});
+  });
 
-app.post("/api/receipts", async (req: Request, res: Response) => {
-  try {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Authentication required" });
-    }
-    
-    // Sanitize merchant name for known problem cases
-    if (req.body.merchantName && typeof req.body.merchantName === 'string') {
-      if (req.body.merchantName.includes('Shell sai')) {
-        console.log("Fixing problematic merchant name...");
-        req.body.merchantName = "Shell Gas Station";
+  app.post("/api/receipts", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
       }
-    }
-    
-    const receiptSchema = z.object({
-      merchantName: z.string(),
-      date: z.union([
-        z.string().transform(str => new Date(str)),
-        z.date()
-      ]),
-      total: z.union([
-        z.number().positive(),
-        z.string().transform(str => {
-          const num = parseFloat(str);
-          if (isNaN(num) || num <= 0) throw new Error('Total must be a positive number');
-          return num;
-        })
-      ]),
-      items: z.array(z.object({
-        name: z.string(),
-        price: z.union([
+      
+      const receiptSchema = z.object({
+        merchantName: z.string(),
+        date: z.union([
+          z.string().transform(str => new Date(str)),
+          z.date()
+        ]),
+        total: z.union([
           z.number().positive(),
           z.string().transform(str => {
             const num = parseFloat(str);
-            if (isNaN(num) || num <= 0) throw new Error('Price must be a positive number');
+            if (isNaN(num) || num <= 0) throw new Error('Total must be a positive number');
             return num;
           })
         ]),
+        items: z.array(z.object({
+          name: z.string(),
+          price: z.union([
+            z.number().positive(),
+            z.string().transform(str => {
+              const num = parseFloat(str);
+              if (isNaN(num) || num <= 0) throw new Error('Price must be a positive number');
+              return num;
+            })
+          ]),
+          category: z.string().optional()
+        })),
         category: z.string().optional()
-      })),
-      category: z.string().optional()
-    });
-    
-    const validatedData = receiptSchema.parse(req.body);
-    const userId = req.user.id;
-    
-    // Create receipt with validated data
-    const newReceipt = await storage.createReceipt({
-      userId,
-      merchantName: validatedData.merchantName,
-      date: validatedData.date,
-      total: validatedData.total.toString(),
-      items: validatedData.items,
-      category: validatedData.category || "Others"
-    });
-    
-    res.status(201).json(newReceipt);
-  } catch (error) {
-    console.error("Error creating receipt:", error);
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ message: "Invalid receipt data", errors: error.errors });
+      });
+      
+      const validatedData = receiptSchema.parse(req.body);
+      const userId = req.user.id;
+      
+      // Create receipt with validated data
+      const newReceipt = await storage.createReceipt({
+        userId,
+        merchantName: validatedData.merchantName,
+        date: validatedData.date,
+        total: validatedData.total.toString(),
+        items: validatedData.items,
+        category: validatedData.category || "Others"
+      });
+      
+      // Process receipt items in the background
+      setTimeout(() => {
+        try {
+          processReceiptItems(newReceipt.id, newReceipt.items, userId);
+        } catch (error) {
+          console.error("Error processing receipt items in background:", error);
+        }
+      }, 100);
+      
+      res.status(201).json(newReceipt);
+    } catch (error) {
+      console.error("Error creating receipt:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid receipt data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create receipt" });
     }
-    res.status(500).json({ message: "Failed to create receipt" });
-  }
-});
+  });
 
-  // Helper function to process receipt items in the background
-  async function processReceiptItems(receiptId: number, items: any[]) {
+  // Stats endpoints
+  app.get("/api/stats", async (req: Request, res: Response) => {
     try {
-      const receipt = await storage.getReceipt(receiptId);
-      if (!receipt) return;
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
       
-      const userId = receipt.userId;
+      const userId = req.user.id;
+      const stats = await storage.getStats(userId);
       
-      // Process items in batches for categorization
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  app.get("/api/stats/budget-status", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const userId = req.user.id;
+      const budgetStatuses = await storage.getBudgetStatuses(userId);
+      
+      res.json(budgetStatuses);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch budget statuses" });
+    }
+  });
+
+  app.get("/api/stats/category-spending", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const userId = req.user.id;
+      const categorySpending = await storage.getCategorySpending(userId);
+      
+      res.json(categorySpending);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch category spending" });
+    }
+  });
+
+  app.get("/api/stats/monthly-spending", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const userId = req.user.id;
+      const months = parseInt(req.query.months as string) || 6;
+      
+      const monthlySpending = await storage.getMonthlySpending(userId, months);
+      
+      res.json(monthlySpending);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch monthly spending" });
+    }
+  });
+
+  // Insights endpoints
+  app.get("/api/insights", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const userId = req.user.id;
+      const type = req.query.type as string;
+      
+      let insights;
+      if (type) {
+        insights = await storage.getInsightsByType(userId, type);
+      } else {
+        insights = await storage.getInsights(userId);
+      }
+      
+      res.json(insights);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch insights" });
+    }
+  });
+
+  app.get("/api/insights/:id", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid insight id" });
+      }
+      
+      const insight = await storage.getInsight(id);
+      
+      if (!insight) {
+        return res.status(404).json({ message: "Insight not found" });
+      }
+      
+      res.json(insight);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch insight" });
+    }
+  });
+
+  app.post("/api/insights/mark-read/:id", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid insight id" });
+      }
+      
+      const updatedInsight = await storage.markInsightAsRead(id);
+      
+      if (!updatedInsight) {
+        return res.status(404).json({ message: "Insight not found" });
+      }
+      
+      res.json(updatedInsight);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark insight as read" });
+    }
+  });
+
+  app.post("/api/generate-insights", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const userId = req.user.id;
+      const receipts = await storage.getReceipts(userId);
+      
+      if (receipts.length === 0) {
+        return res.status(404).json({ message: "No receipts found" });
+      }
+      
+      // Analyze spending patterns first
+      const patterns = await analyzeSpendingPatterns(receipts);
+      
+      // Detect recurring expenses
+      const recurring = await detectRecurringExpenses(receipts);
+      
+      // Generate insights based on analyses
+      const insights = await generateAdvancedInsights(userId, receipts);
+      
+      // Save insights to database
+      const savedInsights = [];
+      for (const insight of insights) {
+        const savedInsight = await storage.createInsight(insight);
+        savedInsights.push(savedInsight);
+      }
+      
+      res.json({
+        message: "Generated insights",
+        count: savedInsights.length,
+        insights: savedInsights,
+        patterns,
+        recurring
+      });
+    } catch (error) {
+      console.error("Failed to generate insights:", error);
+      res.status(500).json({ message: "Failed to generate insights", error: (error as Error).message });
+    }
+  });
+
+  // Set up http server
+  const httpServer = createServer(app);
+  
+  // Helper function for processing receipt items in the background
+  async function processReceiptItems(receiptId: number, items: any[], userId: number) {
+    try {
+      // Get all previous receipts for this user for context
+      const previousReceipts = await storage.getReceipts(userId);
+      
+      // Process items for categorization and recurring detection
       const itemsWithCategories = await categorizeItems(items);
       
-      // Keep track of user-defined categories vs. AI-suggested ones
-      const categoryChanges: Record<string, number> = {};
-      const receiptCategory = receipt.category || "Others";
-      
-      // Process each item in the receipt
-      for (let i = 0; i < itemsWithCategories.length && i < items.length; i++) {
+      // Update receipt items with categorization
+      for (let i = 0; i < itemsWithCategories.length; i++) {
         const item = itemsWithCategories[i];
-        
-        // Apply category if detected and it's not the default "Others"
         if (item.category && item.category !== "Others") {
           await storage.updateReceiptItem(receiptId, i, { category: item.category });
-          
-          // Track category changes for potential receipt category updates
-          categoryChanges[item.category] = (categoryChanges[item.category] || 0) + 1;
-        } else if (receiptCategory && receiptCategory !== "Others") {
-          // Apply receipt-level category if no specific category detected
-          await storage.updateReceiptItem(receiptId, i, { category: receiptCategory });
         }
         
-        // Detect recurring items
+        // Detect if item is recurring
         const isRecurring = await detectRecurring(item.name);
         if (isRecurring) {
           await storage.updateReceiptItem(receiptId, i, { recurring: true });
         }
       }
       
-      // Generate insight for this receipt
-      try {
-        const insight = await generateInsight(receipt);
+      // Generate insight for the receipt
+      const receipt = await storage.getReceipt(receiptId);
+      if (receipt) {
+        const insight = await generateInsight(receipt, previousReceipts);
+        
         if (insight) {
           await storage.createInsight({
             userId,
             type: "receipt",
             content: insight,
+            date: new Date(),
             read: false,
-            relatedItemId: receipt.id.toString(),
-            date: new Date()
+            relatedItemId: receiptId.toString()
           });
         }
-      } catch (insightError) {
-        console.error("Error generating receipt insight:", insightError);
+      }
+      
+      // Periodically generate advanced insights (every 5th receipt)
+      if (previousReceipts.length % 5 === 0) {
+        try {
+          const advancedInsights = await generateAdvancedInsights(userId, previousReceipts);
+          
+          for (const insightData of advancedInsights) {
+            await storage.createInsight(insightData);
+          }
+        } catch (insightError) {
+          console.error("Error generating advanced insights:", insightError);
+        }
+      }
+      
+      // Generate budget warnings if nearing limits
+      const budgetStatuses = await storage.getBudgetStatuses(userId);
+      
+      for (const status of budgetStatuses) {
+        if (status.status === 'warning') {
+          await storage.createInsight({
+            userId,
+            type: "budget-warning",
+            content: `You've used ${status.percentage}% of your ${status.category} budget (₹${status.spent.toFixed(2)}/₹${status.limit.toFixed(2)}). Consider limiting your spending in this category.`,
+            read: false,
+            date: new Date(),
+            relatedItemId: status.category
+          });
+        } else if (status.status === 'exceeded') {
+          await storage.createInsight({
+            userId,
+            type: "budget-alert",
+            content: `You've exceeded your ${status.category} budget by ₹${(status.spent - status.limit).toFixed(2)}. It's recommended to adjust your budget or reduce spending in this category.`,
+            read: false,
+            date: new Date(),
+            relatedItemId: status.category
+          });
+        }
       }
     } catch (error) {
-      console.error("Error processing receipt items:", error);
+      console.error("Failed to process receipt items:", error);
     }
   }
 
-  // Create and return HTTP server without starting it
-  const httpServer = new Server(app);
   return httpServer;
 }

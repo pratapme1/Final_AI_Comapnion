@@ -68,7 +68,7 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     let message = err.message || "Internal Server Error";
 
-    // Check if it's a JSON syntax error
+    // Check if it's a JSON syntax error and provide helpful error
     if (err instanceof SyntaxError && err.message.includes('JSON')) {
       console.error('JSON Parsing Error:', err.message);
       message = "There was an issue processing the request data. Please check your input.";

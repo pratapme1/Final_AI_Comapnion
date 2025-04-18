@@ -58,7 +58,7 @@ export interface IStorage {
   getMonthlySpending(userId: number, months: number): Promise<MonthlySpending[]>;
 
   // Session store
-  sessionStore: any;
+  sessionStore: session.Store;
 }
 
 export class MemStorage implements IStorage {
@@ -74,7 +74,7 @@ export class MemStorage implements IStorage {
   private currentReceiptId: number;
   private currentInsightId: number;
   
-  public sessionStore: any; // Session store
+  public sessionStore: session.Store;
   
   constructor() {
     this.users = new Map();
