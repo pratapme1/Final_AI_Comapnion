@@ -4,7 +4,17 @@ import { storage } from "./storage";
 import { z } from "zod";
 import schedule from "node-schedule";
 import multer from 'multer';
-import { categorizeItems, generateInsight, generateSavingsSuggestion, detectRecurring, generateWeeklyDigest, processReceiptImage } from "./ai";
+import { 
+  categorizeItems, 
+  generateInsight, 
+  generateSavingsSuggestion, 
+  detectRecurring, 
+  generateWeeklyDigest, 
+  processReceiptImage,
+  analyzeSpendingPatterns,
+  detectRecurringExpenses,
+  generateAdvancedInsights
+} from "./ai";
 import { setupAuth } from "./auth";
 
 // Configure multer
@@ -561,20 +571,126 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
     }
   });
   
+  // Generate advanced AI insights on demand
+  app.post("/api/insights/generate", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const userId = req.user.id;
+      
+      // Get all receipts for analysis
+      const receipts = await storage.getReceipts(userId);
+      
+      if (receipts.length === 0) {
+        return res.status(200).json({ 
+          message: "Not enough data to generate insights",
+          insights: []
+        });
+      }
+      
+      // Generate advanced insights
+      const insights = await generateAdvancedInsights(userId, receipts);
+      
+      // Store the insights in the database
+      const storedInsights = [];
+      for (const insight of insights) {
+        const storedInsight = await storage.createInsight(insight);
+        storedInsights.push(storedInsight);
+      }
+      
+      res.status(200).json({ 
+        message: `Generated ${storedInsights.length} new insights`,
+        insights: storedInsights
+      });
+    } catch (error) {
+      console.error("Error generating insights:", error);
+      res.status(500).json({ message: "Failed to generate insights" });
+    }
+  });
+  
+  // Get spending patterns analysis
+  app.get("/api/insights/spending-patterns", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const userId = req.user.id;
+      
+      // Get all receipts for analysis
+      const receipts = await storage.getReceipts(userId);
+      
+      if (receipts.length === 0) {
+        return res.status(200).json({ 
+          message: "Not enough data to analyze spending patterns",
+          patterns: {
+            patterns: [],
+            frequentMerchants: [],
+            categoryTrends: [],
+            unusualSpending: []
+          }
+        });
+      }
+      
+      // Analyze spending patterns
+      const patterns = await analyzeSpendingPatterns(receipts);
+      
+      res.status(200).json({ patterns });
+    } catch (error) {
+      console.error("Error analyzing spending patterns:", error);
+      res.status(500).json({ message: "Failed to analyze spending patterns" });
+    }
+  });
+  
+  // Get recurring expenses analysis
+  app.get("/api/insights/recurring-expenses", async (req: Request, res: Response) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      const userId = req.user.id;
+      
+      // Get all receipts for analysis
+      const receipts = await storage.getReceipts(userId);
+      
+      if (receipts.length < 2) {
+        return res.status(200).json({ 
+          message: "Not enough data to detect recurring expenses",
+          recurringExpenses: []
+        });
+      }
+      
+      // Detect recurring expenses
+      const recurringExpenses = await detectRecurringExpenses(receipts);
+      
+      res.status(200).json({ recurringExpenses });
+    } catch (error) {
+      console.error("Error detecting recurring expenses:", error);
+      res.status(500).json({ message: "Failed to detect recurring expenses" });
+    }
+  });
+  
   // Schedule weekly digest generation (every Sunday at 6 PM)
   schedule.scheduleJob('0 18 * * 0', async () => {
     try {
+      // In real production this would be for all users, but we'll use demo user
       const userId = 1; // Using default user for demo
       
-      // Get receipts from the past week
+      // Get all receipts for a comprehensive analysis
+      const allReceipts = await storage.getReceipts(userId);
+      
+      // Get receipts from just the past week for the weekly digest
       const today = new Date();
       const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
       
-      const receipts = await storage.getReceiptsByDateRange(userId, lastWeek, today);
+      const weeklyReceipts = await storage.getReceiptsByDateRange(userId, lastWeek, today);
       
-      if (receipts.length > 0) {
-        // Generate weekly digest
-        const digest = await generateWeeklyDigest(userId, receipts);
+      if (weeklyReceipts.length > 0) {
+        // Generate enhanced weekly digest with pattern analysis
+        const digest = await generateWeeklyDigest(userId, weeklyReceipts);
         
         // Create insight from digest
         await storage.createInsight({
@@ -585,9 +701,19 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
           read: false,
           relatedItemId: null
         });
+        
+        // Also generate advanced insights once a week
+        if (allReceipts.length > 0) {
+          const advancedInsights = await generateAdvancedInsights(userId, allReceipts);
+          
+          // Store the insights
+          for (const insightData of advancedInsights) {
+            await storage.createInsight(insightData);
+          }
+        }
       }
     } catch (error) {
-      console.error("Failed to generate weekly digest:", error);
+      console.error("Failed to generate weekly digest and insights:", error);
     }
   });
   
@@ -656,8 +782,11 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
         }
       }
       
-      // Generate generic insight for the whole receipt
-      const insight = await generateInsight(receipt);
+      // Get previous receipts for enhanced insight generation
+      const previousReceipts = await storage.getReceipts(userId);
+      
+      // Generate enhanced insight for the whole receipt with comparison to previous receipts
+      const insight = await generateInsight(receipt, previousReceipts.filter(r => r.id !== receiptId));
       
       if (insight) {
         await storage.createInsight({
@@ -668,6 +797,21 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
           read: false,
           relatedItemId: receiptId.toString()
         });
+      }
+      
+      // Periodically generate advanced insights (every 5th receipt)
+      if (previousReceipts.length % 5 === 0) {
+        try {
+          // Generate advanced insights based on all receipts
+          const advancedInsights = await generateAdvancedInsights(userId, previousReceipts);
+          
+          // Store the insights
+          for (const insightData of advancedInsights) {
+            await storage.createInsight(insightData);
+          }
+        } catch (insightError) {
+          console.error("Error generating advanced insights:", insightError);
+        }
       }
       
       // Check budget status and create alerts if needed
