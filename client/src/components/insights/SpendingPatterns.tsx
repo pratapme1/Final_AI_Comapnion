@@ -1,34 +1,35 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, AlertOctagon, TrendingUp, TrendingDown, BadgeCheck } from "lucide-react";
+import { AlertOctagon, TrendingUp, TrendingDown, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// Type definitions
+interface MerchantData {
+  name: string;
+  frequency: number;
+  totalSpent: string;
+}
+
+interface TrendData {
+  direction: 'up' | 'down';
+  description: string;
+}
+
+interface PatternData {
+  patterns: string[];
+  frequentMerchants: MerchantData[];
+  categoryTrends: TrendData[];
+  unusualSpending: string[];
+}
+
+interface SpendingPatternsResponse {
+  patterns: PatternData;
+}
+
 const SpendingPatterns = () => {
   const [expanded, setExpanded] = useState(false);
-
-  interface MerchantData {
-    name: string;
-    frequency: number;
-    totalSpent: string;
-  }
-  
-  interface TrendData {
-    direction: 'up' | 'down';
-    description: string;
-  }
-  
-  interface PatternData {
-    patterns: string[];
-    frequentMerchants: MerchantData[];
-    categoryTrends: TrendData[];
-    unusualSpending: string[];
-  }
-  
-  interface SpendingPatternsResponse {
-    patterns: PatternData;
-  }
   
   const { data: patternsData, isLoading, error } = useQuery<SpendingPatternsResponse>({
     queryKey: ['/api/insights/spending-patterns'],
@@ -86,7 +87,7 @@ const SpendingPatterns = () => {
     frequentMerchants: [],
     categoryTrends: [],
     unusualSpending: []
-  } as PatternData;
+  };
 
   if (patterns.patterns.length === 0 && 
       patterns.frequentMerchants.length === 0 && 
@@ -124,7 +125,7 @@ const SpendingPatterns = () => {
           <div className="mb-6">
             <h3 className="text-sm font-semibold text-gray-700 mb-2">Key Patterns Detected</h3>
             <ul className="space-y-2">
-              {patterns.patterns.slice(0, expanded ? undefined : 3).map((pattern: string, index: number) => (
+              {patterns.patterns.slice(0, expanded ? undefined : 3).map((pattern, index) => (
                 <li key={index} className="flex items-start">
                   <BadgeCheck className="h-5 w-5 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
                   <span className="text-sm">{pattern}</span>
@@ -140,7 +141,7 @@ const SpendingPatterns = () => {
               <div className="bg-blue-50 p-4 rounded-lg mb-4">
                 <h3 className="text-sm font-semibold text-blue-700 mb-2">Most Frequent Merchants</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {patterns.frequentMerchants.map((merchant: MerchantData, index: number) => (
+                  {patterns.frequentMerchants.map((merchant, index) => (
                     <div key={index} className="bg-white p-3 rounded-md shadow-sm border border-blue-100">
                       <div className="font-medium text-sm">{merchant.name}</div>
                       <div className="text-xs text-gray-600">
@@ -156,7 +157,7 @@ const SpendingPatterns = () => {
               <div className="mb-4">
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">Category Spending Trends</h3>
                 <div className="space-y-2">
-                  {patterns.categoryTrends.map((trend: TrendData, index: number) => (
+                  {patterns.categoryTrends.map((trend, index) => (
                     <div key={index} className="flex items-center">
                       {trend.direction === 'up' ? (
                         <TrendingUp className="h-4 w-4 text-red-600 mr-2" />
@@ -174,7 +175,7 @@ const SpendingPatterns = () => {
               <div className="bg-amber-50 p-4 rounded-lg mb-4">
                 <h3 className="text-sm font-semibold text-amber-700 mb-2">Unusual Spending</h3>
                 <ul className="space-y-2">
-                  {patterns.unusualSpending.map((item: string, index: number) => (
+                  {patterns.unusualSpending.map((item, index) => (
                     <li key={index} className="flex items-start">
                       <AlertOctagon className="h-4 w-4 text-amber-600 mt-0.5 mr-2 flex-shrink-0" />
                       <span className="text-sm">{item}</span>
