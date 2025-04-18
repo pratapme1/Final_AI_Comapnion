@@ -2,33 +2,52 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import InsightCard from "@/components/insights/InsightCard";
+import SpendingPatterns from "@/components/insights/SpendingPatterns";
+import RecurringExpenses from "@/components/insights/RecurringExpenses";
+import GenerateInsights from "@/components/insights/GenerateInsights";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Brain, Sparkles } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+
+interface Insight {
+  id: number;
+  userId: number;
+  content: string;
+  type: string;
+  date: string;
+  read: boolean;
+  relatedItemId: string | null;
+}
 
 const Insights = () => {
   const [activeTab, setActiveTab] = useState("all");
+  const { user } = useAuth();
 
-  const { data: insights, isLoading } = useQuery({
+  const { data: insights = [], isLoading } = useQuery<Insight[]>({
     queryKey: ['/api/insights'],
+    enabled: !!user, // Only fetch if user is authenticated
   });
 
   // Filter insights based on active tab
-  const filteredInsights = insights?.filter((insight: any) => {
+  const filteredInsights = insights.filter((insight) => {
     if (activeTab === "all") return true;
     return insight.type === activeTab;
   });
 
   // Count insights by type
   const countByType: Record<string, number> = {
-    all: insights?.length || 0,
+    all: insights.length || 0,
     saving: 0,
     "budget-alert": 0,
     recurring: 0,
     digest: 0,
+    "pattern": 0, // New type for spending pattern insights
   };
 
-  insights?.forEach((insight: any) => {
+  insights.forEach((insight) => {
     if (countByType[insight.type] !== undefined) {
       countByType[insight.type]++;
     }
@@ -38,12 +57,45 @@ const Insights = () => {
     <div>
       {/* Page header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">AI Financial Insights</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 flex items-center">
+          <Brain className="mr-2 h-6 w-6 text-indigo-600" />
+          AI Financial Insights
+        </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Smart suggestions and alerts to optimize your finances
+          Smart suggestions and AI-powered analysis to optimize your finances
         </p>
       </div>
 
+      {/* Advanced Insights Section */}
+      <div className="mb-8">
+        <div className="flex items-center mb-4">
+          <Sparkles className="h-5 w-5 text-amber-500 mr-2" />
+          <h2 className="text-lg font-semibold text-gray-800">Enhanced AI Analysis</h2>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* First column - Generate insights */}
+          <div className="lg:col-span-1">
+            <GenerateInsights />
+          </div>
+          
+          {/* Second and third column - Spending patterns and recurring expenses */}
+          <div className="lg:col-span-2">
+            <div className="space-y-6">
+              <SpendingPatterns />
+              <RecurringExpenses />
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <Separator className="my-8" />
+
+      {/* Individual Insights Section */}
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">Financial Insights Feed</h2>
+      </div>
+      
       {/* Tabs for filtering insights */}
       <Tabs 
         defaultValue="all" 
@@ -81,6 +133,12 @@ const Insights = () => {
               Weekly Digest
               <Badge variant="secondary" className="ml-2 absolute -top-1 -right-1 text-xs">
                 {countByType.digest}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="pattern" className="relative">
+              Patterns
+              <Badge variant="secondary" className="ml-2 absolute -top-1 -right-1 text-xs">
+                {countByType.pattern}
               </Badge>
             </TabsTrigger>
           </TabsList>

@@ -41,6 +41,8 @@ const InsightCard = ({ insight }: InsightCardProps) => {
         return <Clock className="h-6 w-6 text-yellow-600" />;
       case 'digest':
         return <FileText className="h-6 w-6 text-blue-600" />;
+      case 'pattern':
+        return <TrendingUp className="h-6 w-6 text-indigo-600" />;
       default:
         return <Info className="h-6 w-6 text-gray-600" />;
     }
@@ -75,6 +77,13 @@ const InsightCard = ({ insight }: InsightCardProps) => {
           border: 'border-blue-100',
           text: 'text-blue-800',
           title: 'Weekly Smart Digest'
+        };
+      case 'pattern':
+        return {
+          bg: 'bg-indigo-50',
+          border: 'border-indigo-100',
+          text: 'text-indigo-800',
+          title: 'Spending Pattern'
         };
       default:
         return {
