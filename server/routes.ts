@@ -477,7 +477,8 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
             type: "receipt",
             content: insight,
             read: false,
-            relatedItemId: receipt.id.toString()
+            relatedItemId: receipt.id.toString(),
+            date: new Date()
           });
         }
       } catch (insightError) {
@@ -489,6 +490,6 @@ app.post("/api/receipts", async (req: Request, res: Response) => {
   }
 
   // Create and return HTTP server without starting it
-  const httpServer = require('http').createServer(app);
+  const httpServer = new Server(app);
   return httpServer;
 }
