@@ -127,7 +127,17 @@ export async function createBudget(
   limit: number,
   month: string
 ): Promise<any> {
-  return await apiRequest('POST', '/api/budgets', { category, limit, month });
+  console.log("Creating budget with:", { category, limit, month });
+  try {
+    return await apiRequest('POST', '/api/budgets', { 
+      category, 
+      limit: Number(limit), // Ensure limit is a number
+      month 
+    });
+  } catch (error) {
+    console.error("Budget creation error:", error);
+    throw error;
+  }
 }
 
 /**
@@ -136,7 +146,15 @@ export async function createBudget(
  * @param limit - New budget limit value
  */
 export async function updateBudget(id: number, limit: string): Promise<any> {
-  return await apiRequest('PUT', `/api/budgets/${id}`, { limit });
+  console.log("Updating budget:", { id, limit });
+  try {
+    return await apiRequest('PUT', `/api/budgets/${id}`, { 
+      limit: Number(limit) // Ensure limit is a number
+    });
+  } catch (error) {
+    console.error("Budget update error:", error);
+    throw error;
+  }
 }
 
 /**

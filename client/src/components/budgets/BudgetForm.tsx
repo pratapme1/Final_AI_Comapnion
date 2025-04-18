@@ -166,6 +166,7 @@ const BudgetForm = ({ budgetId, defaultMonth, onComplete }: BudgetFormProps) => 
   // Create budget mutation
   const createMutation = useMutation({
     mutationFn: async (data: BudgetFormValues) => {
+      console.log("Budget form values:", data);
       return createBudget(
         data.category,
         parseFloat(data.limit),
@@ -203,7 +204,8 @@ const BudgetForm = ({ budgetId, defaultMonth, onComplete }: BudgetFormProps) => 
   const updateMutation = useMutation({
     mutationFn: async (data: BudgetFormValues) => {
       if (!budgetId) throw new Error("Budget ID is required for updates");
-      return updateBudget(budgetId, parseFloat(data.limit));
+      // The signature expects a string, so we'll pass data.limit directly
+      return updateBudget(budgetId, data.limit);
     },
     onSuccess: async () => {
       toast({

@@ -64,9 +64,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Authentication required" });
       }
       
+      console.log("Budget request body:", req.body);
+      
       const budgetSchema = z.object({
         category: z.string(),
-        limit: z.number().positive(),
+        limit: z.union([
+          z.string().transform(str => {
+            const parsed = parseFloat(str);
+            if (isNaN(parsed)) throw new Error("Invalid budget limit number");
+            return parsed;
+          }),
+          z.number()
+        ]).refine(val => val > 0, { message: "Budget limit must be positive" }),
         month: z.string().regex(/^\d{4}-\d{2}$/) // YYYY-MM format
       });
       
@@ -91,10 +100,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json(newBudget);
       }
     } catch (error) {
+      console.error("Budget creation error:", error);
+      
       if (error instanceof z.ZodError) {
         res.status(400).json({ message: "Invalid budget data", errors: error.errors });
+      } else if (error instanceof SyntaxError) {
+        res.status(400).json({ message: "Invalid JSON data", error: error.message });
       } else {
-        res.status(500).json({ message: "Failed to create/update budget" });
+        res.status(500).json({ message: "Failed to create/update budget", error: error.message || String(error) });
       }
     }
   });
