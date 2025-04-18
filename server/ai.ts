@@ -500,11 +500,15 @@ export async function analyzeSpendingPatterns(receipts: Receipt[]): Promise<{
     
     if (frequentMerchants.length > 0) {
       const topMerchant = frequentMerchants[0];
-      patterns.push(`You've visited ${topMerchant.name} ${topMerchant.count} times, spending a total of ₹${topMerchant.total.toFixed(2)}.`);
+      // Escape special characters in merchant name
+      const merchantName = topMerchant.name.replace(/"/g, '\\"');
+      patterns.push(`You've visited ${merchantName} ${topMerchant.count} times, spending a total of ₹${topMerchant.total.toFixed(2)}.`);
     }
     
     categoryTrends.slice(0, 2).forEach(trend => {
-      patterns.push(`${trend.category} spending has been ${trend.trend} by ${trend.percentage}%.`);
+      // Escape category name
+      const categoryName = trend.category.replace(/"/g, '\\"');
+      patterns.push(`${categoryName} spending has been ${trend.trend} by ${trend.percentage}%.`);
     });
     
     // Get months with spending data
