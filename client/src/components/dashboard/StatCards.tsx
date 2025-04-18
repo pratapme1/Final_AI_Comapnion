@@ -61,13 +61,13 @@ const StatCards = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
       {/* Total Spending Card */}
       <div className="bg-white overflow-hidden shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
           <dl>
             <dt className="text-sm font-medium text-gray-500 truncate">
-              Total Spending (This Month)
+              Total Spending (All Time)
             </dt>
             <dd className="mt-1 text-3xl font-semibold text-gray-900">
               {formatCurrency(statsData.totalSpend)}
@@ -97,34 +97,12 @@ const StatCards = () => {
             </dd>
             <dd className="mt-2 flex items-center text-sm">
               <span className="text-warning font-medium">
-                {statsData.totalSpend && statsData.budgetRemaining 
+                {statsData.budgetRemaining > 0 
                   ? `${Math.round((statsData.totalSpend / (statsData.totalSpend + statsData.budgetRemaining)) * 100)}% used` 
                   : '0% used'}
               </span>
               <span className="text-gray-500 ml-2">
                 of {formatCurrency(statsData.totalSpend + statsData.budgetRemaining)}
-              </span>
-            </dd>
-          </dl>
-        </div>
-      </div>
-
-      {/* Potential Savings Card */}
-      <div className="bg-white overflow-hidden shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <dl>
-            <dt className="text-sm font-medium text-gray-500 truncate">
-              Potential Savings
-            </dt>
-            <dd className="mt-1 text-3xl font-semibold text-secondary">
-              {formatCurrency(statsData.potentialSavings)}
-            </dd>
-            <dd className="mt-2 flex items-center text-sm">
-              <span className="text-secondary font-medium flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                </svg>
-                {statsData.suggestionsCount} suggestions
               </span>
             </dd>
           </dl>
