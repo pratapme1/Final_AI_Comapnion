@@ -11,7 +11,8 @@ async function throwIfResNotOk(res: Response) {
 }
 
 /**
- * Optimized API request function with request deduplication
+ * Optimized API request function with request deduplication for GET requests
+ * and better error handling for mutation requests
  */
 export async function apiRequest(
   method: string,
@@ -24,23 +25,37 @@ export async function apiRequest(
   if (method === 'GET' && pendingRequests.has(requestKey)) {
     try {
       // Return the cached promise for identical in-flight requests
-      return await pendingRequests.get(requestKey);
+      return await pendingRequests.get(requestKey)!;
     } catch (err) {
       // If the cached promise rejects, we'll try again
       pendingRequests.delete(requestKey);
     }
   }
   
-  // Create the fetch promise
+  // Create appropriate headers
+  const headers: HeadersInit = {};
+  
+  // Add Content-Type for requests with body data
+  if (data) {
+    headers["Content-Type"] = "application/json";
+  }
+  
+  // Add caching headers
+  headers["Cache-Control"] = method === 'GET' ? 'max-age=10' : 'no-cache';
+  
+  // Add a timestamp to prevent caching of non-GET requests in some browsers
+  if (method !== 'GET') {
+    headers["X-Requested-Time"] = Date.now().toString();
+  }
+  
+  // Create the fetch promise with improved configuration
   const fetchPromise = fetch(url, {
     method,
-    headers: data ? { 
-      "Content-Type": "application/json",
-      // Add performance-related headers
-      "Cache-Control": method === 'GET' ? 'max-age=10' : 'no-cache', 
-    } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
+    // Prevent caching for mutation requests
+    cache: method === 'GET' ? 'default' : 'no-store',
   });
   
   // Store the promise for GET requests
@@ -53,9 +68,23 @@ export async function apiRequest(
     });
   }
   
-  const res = await fetchPromise;
-  await throwIfResNotOk(res);
-  return res;
+  try {
+    const res = await fetchPromise;
+    
+    // Log non-OK responses for better debugging
+    if (!res.ok) {
+      console.warn(`API request failed: ${method} ${url}`, { 
+        status: res.status, 
+        statusText: res.statusText 
+      });
+    }
+    
+    await throwIfResNotOk(res);
+    return res;
+  } catch (error) {
+    console.error(`API request error: ${method} ${url}`, error);
+    throw error;
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { markInsightAsRead } from "@/lib/openai";
 import { queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
-import { AlertTriangle, Clock, FileText, Info, TrendingUp, ExternalLink, CheckCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { AlertTriangle, Clock, FileText, Info, TrendingUp, ExternalLink, CheckCircle, Loader2 } from "lucide-react";
 
 interface InsightCardProps {
   insight: any;
@@ -13,6 +14,7 @@ interface InsightCardProps {
 
 const InsightCard = ({ insight }: InsightCardProps) => {
   const [isMarking, setIsMarking] = useState(false);
+  const { toast } = useToast();
   
   const handleMarkAsRead = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -22,10 +24,33 @@ const InsightCard = ({ insight }: InsightCardProps) => {
     
     setIsMarking(true);
     try {
+      console.log(`Marking insight ${insight.id} as read...`);
       await markInsightAsRead(insight.id);
-      queryClient.invalidateQueries({ queryKey: ['/api/insights'] });
+      
+      // Force refresh the insights data
+      await queryClient.invalidateQueries({ queryKey: ['/api/insights'] });
+      
+      // Optimistically update the UI without waiting for a refetch
+      queryClient.setQueryData(['/api/insights'], (oldData: any) => {
+        if (!oldData) return oldData;
+        
+        return oldData.map((item: any) => 
+          item.id === insight.id ? { ...item, read: true } : item
+        );
+      });
+      
+      toast({
+        title: "Insight marked as read",
+        description: "This insight has been marked as read",
+        variant: "default",
+      });
     } catch (error) {
       console.error("Failed to mark insight as read:", error);
+      toast({
+        title: "Error",
+        description: "Failed to mark insight as read. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsMarking(false);
     }

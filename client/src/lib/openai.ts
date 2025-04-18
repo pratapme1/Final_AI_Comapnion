@@ -31,9 +31,19 @@ export async function generateWeeklyDigest(): Promise<void> {
 /**
  * Function to mark an insight as read
  * @param insightId - The ID of the insight to mark as read
+ * @returns The updated insight with read=true
  */
-export async function markInsightAsRead(insightId: number): Promise<void> {
-  await apiRequest('PUT', `/api/insights/${insightId}/read`);
+export async function markInsightAsRead(insightId: number): Promise<any> {
+  try {
+    console.log(`Making PUT request to /api/insights/${insightId}/read`);
+    const response = await apiRequest('PUT', `/api/insights/${insightId}/read`);
+    const result = await response.json();
+    console.log('Mark as read response:', result);
+    return result;
+  } catch (error) {
+    console.error(`Error marking insight ${insightId} as read:`, error);
+    throw error;
+  }
 }
 
 /**
