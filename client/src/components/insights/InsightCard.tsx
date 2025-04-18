@@ -110,7 +110,54 @@ const InsightCard = ({ insight }: InsightCardProps) => {
               </span>
             </div>
             <div className={`mt-2 text-sm ${styles.text} whitespace-pre-line`}>
-              <p>{insight.content}</p>
+              {insight.type === 'digest' ? (
+                <div className="digest-content">
+                  {insight.content.split('\n').map((paragraph, index) => {
+                    // Check if this is a heading (starts with ## or #)
+                    if (paragraph.startsWith('## ')) {
+                      return (
+                        <h4 key={index} className="text-blue-700 font-medium text-sm mt-3 mb-1 border-b pb-1 border-blue-100">
+                          {paragraph.replace('## ', '')}
+                        </h4>
+                      );
+                    } else if (paragraph.startsWith('# ')) {
+                      return (
+                        <h3 key={index} className="text-blue-800 font-semibold text-base mt-4 mb-2">
+                          {paragraph.replace('# ', '')}
+                        </h3>
+                      );
+                    } else if (paragraph.startsWith('- ')) {
+                      // This is a list item
+                      return (
+                        <div key={index} className="flex items-baseline mb-1">
+                          <div className="rounded-full bg-blue-200 h-1.5 w-1.5 mt-1.5 mr-2 flex-shrink-0"></div>
+                          <p>{paragraph.replace('- ', '')}</p>
+                        </div>
+                      );
+                    } else if (paragraph.includes(':')) {
+                      // This might be a key-value pair like "Total Spend: $500"
+                      const [key, value] = paragraph.split(':');
+                      if (key && value) {
+                        return (
+                          <div key={index} className="flex justify-between items-center my-1 border-b border-blue-50 pb-1">
+                            <span className="font-medium">{key.trim()}:</span>
+                            <span className="text-right">{value.trim()}</span>
+                          </div>
+                        );
+                      }
+                    }
+                    
+                    // Regular paragraph with some space between
+                    return paragraph.trim() ? (
+                      <p key={index} className="mb-2">{paragraph}</p>
+                    ) : (
+                      <div key={index} className="h-2"></div> // Empty line spacer
+                    );
+                  })}
+                </div>
+              ) : (
+                <p>{insight.content}</p>
+              )}
             </div>
             <div className="mt-3 flex justify-between items-center">
               <div>

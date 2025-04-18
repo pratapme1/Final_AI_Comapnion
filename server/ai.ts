@@ -228,21 +228,53 @@ export async function generateWeeklyDigest(userId: number, receipts: Receipt[]):
       Top spending categories: ${topCategories.join(", ")}
       Number of transactions: ${receipts.length}
 
-      Include:
-      1. A summary of the week's spending
-      2. One specific saving tip based on the spending pattern
-
-      Format the digest in a brief, readable format with bullet points. Keep it under 100 words.
+      Format the digest with the following structure (use exactly these section headers with # and ## as shown):
+      
+      # Weekly Financial Summary
+      
+      ## Spending Overview
+      - Key statistics and summary of week's spending
+      - Any notable trends or patterns
+      
+      ## Top Categories
+      - Brief breakdown of top spending categories
+      
+      ## Saving Tips
+      - One specific actionable saving tip based on spending patterns
+      
+      ## Looking Ahead
+      - One brief recommendation for next week
+      
+      Note: Format with clear section headers, bullet points for lists, and use key-value format for statistics like "Total Spend: ₹x.xx"
     `;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 200
+      max_tokens: 350
     });
 
-    return response.choices[0].message.content || 
-      `Weekly Digest:\n- You spent ₹${totalSpend.toFixed(2)} this week\n- Top categories: ${topCategories.join(", ")}\n- Consider tracking your expenses more closely to identify saving opportunities.`;
+    const content = response.choices[0].message.content;
+    
+    if (content) {
+      return content;
+    }
+    
+    // Fallback formatted digest if OpenAI fails
+    return `# Weekly Financial Summary
+    
+## Spending Overview
+- You spent ₹${totalSpend.toFixed(2)} this week
+- Transaction count: ${receipts.length}
+
+## Top Categories
+${topCategories.map(cat => `- ${cat}`).join('\n')}
+
+## Saving Tips
+- Consider tracking your expenses more closely to identify saving opportunities.
+
+## Looking Ahead
+- Set budgets for your top spending categories to keep your finances on track.`;
   } catch (error) {
     console.error("Error generating weekly digest:", error);
     return "Failed to generate weekly digest. Please try again later.";
