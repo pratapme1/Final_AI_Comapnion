@@ -2,6 +2,20 @@ import { useQuery } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/openai";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import { Link } from "wouter";
+import { 
+  ArrowRightIcon, 
+  ChevronRightIcon, 
+  ClockIcon, 
+  HomeIcon, 
+  ReceiptIcon, 
+  ShoppingBasketIcon, 
+  ShoppingCartIcon,
+  UtensilsIcon,
+  ZapIcon
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 const TransactionList = () => {
   const { data: receipts, isLoading } = useQuery({
@@ -10,175 +24,169 @@ const TransactionList = () => {
 
   if (isLoading) {
     return (
-      <div>
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Recent Transactions</h2>
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="divide-y divide-gray-200">
-            {[...Array(5)].map((_, index) => (
-              <div key={index} className="px-4 py-4 sm:px-6">
-                <div className="flex justify-between">
-                  <div className="flex items-center">
-                    <Skeleton className="h-5 w-5 mr-3 rounded-full" />
-                    <div>
-                      <Skeleton className="h-4 w-24 mb-1" />
-                      <Skeleton className="h-3 w-16" />
-                    </div>
-                  </div>
+      <Card className="shadow-md">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-medium flex items-center">
+            <ReceiptIcon className="h-5 w-5 mr-2 text-primary" />
+            Recent Transactions
+          </CardTitle>
+          <CardDescription>Your latest receipts and expenses</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {[...Array(3)].map((_, index) => (
+              <div key={index} className="flex justify-between border-b border-gray-100 pb-3">
+                <div className="flex items-center">
+                  <Skeleton className="h-8 w-8 mr-3 rounded-full" />
                   <div>
-                    <Skeleton className="h-4 w-16 mb-1" />
-                    <Skeleton className="h-5 w-20" />
+                    <Skeleton className="h-4 w-24 mb-1" />
+                    <Skeleton className="h-3 w-16" />
                   </div>
+                </div>
+                <div className="text-right">
+                  <Skeleton className="h-4 w-16 mb-1" />
+                  <Skeleton className="h-3 w-12" />
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     );
   }
 
-  const recentReceipts = receipts?.slice(0, 5) || [];
+  const recentReceipts = receipts?.slice(0, 3) || [];
+  const hasReceipts = recentReceipts.length > 0;
 
-  // Function to get an icon based on merchant type
-  const getMerchantIcon = (merchantName: string) => {
-    const name = merchantName.toLowerCase();
-
-    if (name.includes('market') || name.includes('grocery') || name.includes('basket')) {
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0 mr-3 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-        </svg>
-      );
-    } else if (name.includes('cafe') || name.includes('restaurant') || name.includes('food')) {
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0 mr-3 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v13m0-13V6a4 4 0 00-4-4H8.8a4 4 0 00-3.6 2.3L4 8h16l-1.2-3.7A4 4 0 0016.2 2H16a4 4 0 00-4 4v2zm0 13a2 2 0 100 4 2 2 0 000-4z" />
-        </svg>
-      );
-    } else if (name.includes('netflix') || name.includes('prime') || name.includes('disney')) {
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0 mr-3 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-        </svg>
-      );
-    } else if (name.includes('electricity') || name.includes('water') || name.includes('bill')) {
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0 mr-3 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      );
-    } else {
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0 mr-3 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-        </svg>
-      );
-    }
-  };
-
-  // Function to get category color
-  const getCategoryColor = (category: string) => {
-    switch(category?.toLowerCase()) {
+  // Get category icon
+  const getCategoryIcon = (category: string) => {
+    const categoryLower = (category || '').toLowerCase();
+    
+    switch (categoryLower) {
       case 'groceries':
-        return 'bg-green-100 text-green-800';
+        return <ShoppingBasketIcon className="h-4 w-4 text-green-500" />;
       case 'dining':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'entertainment':
-        return 'bg-purple-100 text-purple-800';
+      case 'food':
+      case 'restaurant':
+        return <UtensilsIcon className="h-4 w-4 text-amber-500" />;
       case 'utilities':
-        return 'bg-blue-100 text-blue-800';
-      case 'transportation':
-        return 'bg-indigo-100 text-indigo-800';
+        return <ZapIcon className="h-4 w-4 text-blue-500" />;
+      case 'shopping':
+        return <ShoppingCartIcon className="h-4 w-4 text-pink-500" />;
+      case 'housing':
+      case 'rent':
+        return <HomeIcon className="h-4 w-4 text-purple-500" />;
       default:
-        return 'bg-gray-100 text-gray-800';
+        return <ReceiptIcon className="h-4 w-4 text-gray-500" />;
     }
   };
 
-  // Check if an item is recurring
-  const hasRecurringItems = (items: any[]) => {
-    return items.some(item => item.recurring);
-  };
-
-  // Get insight for an item
-  const getItemInsight = (items: any[]) => {
-    const itemWithInsight = items.find(item => item.gptInsight);
-    return itemWithInsight ? itemWithInsight.gptInsight : null;
+  // Function to get dominant category from receipt items
+  const getDominantCategory = (items: any[] = []) => {
+    if (!items || items.length === 0) return 'Others';
+    
+    const categoryCount = items.reduce((acc: Record<string, number>, item: any) => {
+      const category = item.category || 'Others';
+      acc[category] = (acc[category] || 0) + 1;
+      return acc;
+    }, {});
+    
+    return Object.entries(categoryCount)
+      .sort((a: any, b: any) => b[1] - a[1])[0][0];
   };
 
   return (
-    <div>
-      <h2 className="text-lg font-medium text-gray-900 mb-4">Recent Transactions</h2>
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="divide-y divide-gray-200">
-          {recentReceipts.length > 0 ? (
-            recentReceipts.map((receipt, index) => {
-              const primaryCategory = receipt.items?.length > 0 
-                ? receipt.items.reduce((acc: any, curr: any) => {
-                    const cat = curr.category || 'Others';
-                    acc[cat] = (acc[cat] || 0) + 1;
-                    return acc;
-                  }, {})
-                : { 'Others': 1 };
-              
-              const dominantCategory = Object.entries(primaryCategory)
-                .sort((a: any, b: any) => b[1] - a[1])[0][0];
-
-              const insight = getItemInsight(receipt.items || []);
-              const isRecurring = hasRecurringItems(receipt.items || []);
-              
-              return (
-                <div key={index} className="px-4 py-4 sm:px-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      {getMerchantIcon(receipt.merchantName)}
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{receipt.merchantName}</p>
-                        <p className="text-xs text-gray-500">
-                          {format(new Date(receipt.date), "MMM d, yyyy, h:mm a")}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="ml-2 flex-shrink-0 flex">
-                      <p className="text-sm font-medium text-gray-900">{formatCurrency(receipt.total)}</p>
-                      <span className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getCategoryColor(dominantCategory)}`}>
-                        {dominantCategory}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {/* Show insight if available */}
-                  {insight && (
-                    <div className="mt-2 text-sm text-gray-500 bg-blue-50 p-2 rounded-md border-l-4 border-blue-400">
-                      <p className="font-medium text-blue-700">AI Insight:</p>
-                      <p>{insight}</p>
-                    </div>
-                  )}
-                  
-                  {/* Show recurring notice if applicable */}
-                  {isRecurring && (
-                    <div className="mt-2 flex items-center text-xs text-gray-500">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-warning mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span className="text-warning font-medium">Recurring monthly expense</span>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          ) : (
-            <div className="py-6 text-center text-gray-500">
-              <p>No transactions yet. Upload a receipt to get started.</p>
-            </div>
+    <Card className="shadow-md">
+      <CardHeader className="pb-2 bg-gradient-to-r from-gray-50 to-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-lg font-medium flex items-center">
+              <ReceiptIcon className="h-5 w-5 mr-2 text-primary" />
+              Recent Transactions
+            </CardTitle>
+            <CardDescription>Your latest receipts and expenses</CardDescription>
+          </div>
+          {hasReceipts && (
+            <Link href="/receipts">
+              <Button variant="ghost" size="sm" className="text-primary">
+                View all <ChevronRightIcon className="h-4 w-4 ml-1" />
+              </Button>
+            </Link>
           )}
         </div>
-        <div className="bg-gray-50 px-4 py-3 sm:px-6">
-          <a href="/receipts" className="text-sm font-medium text-primary hover:text-blue-700">
-            View all transactions <span aria-hidden="true">&rarr;</span>
-          </a>
-        </div>
-      </div>
-    </div>
+      </CardHeader>
+      <CardContent className="pt-4">
+        {hasReceipts ? (
+          <div className="space-y-4">
+            {recentReceipts.map((receipt, index) => {
+              const dominantCategory = getDominantCategory(receipt.items);
+              const receiptDate = new Date(receipt.date);
+              const formattedDate = format(receiptDate, "MMM d, yyyy");
+              const formattedTime = format(receiptDate, "h:mm a");
+              
+              // Determine a background color based on the category
+              let bgColorClass;
+              switch(dominantCategory.toLowerCase()) {
+                case 'groceries': bgColorClass = 'bg-green-50'; break;
+                case 'dining': bgColorClass = 'bg-amber-50'; break;
+                case 'utilities': bgColorClass = 'bg-blue-50'; break;
+                case 'entertainment': bgColorClass = 'bg-purple-50'; break;
+                case 'transportation': bgColorClass = 'bg-indigo-50'; break;
+                default: bgColorClass = 'bg-gray-50';
+              }
+              
+              return (
+                <div 
+                  key={index} 
+                  className={`rounded-lg ${bgColorClass} p-3 border border-gray-100 transition-all hover:shadow-md`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-start">
+                      <div className="bg-white p-2 rounded-lg shadow-sm mr-3">
+                        {getCategoryIcon(dominantCategory)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{receipt.merchantName}</p>
+                        <div className="flex items-center mt-1 text-xs text-gray-500">
+                          <ClockIcon className="h-3 w-3 mr-1" />
+                          <span>{formattedDate} • {formattedTime}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-gray-900">{formatCurrency(receipt.total)}</p>
+                      <p className="text-xs mt-1 font-medium text-gray-600">{dominantCategory}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            
+            <Link href="/receipts/upload">
+              <Button variant="outline" size="sm" className="w-full mt-2 text-sm">
+                <ArrowRightIcon className="h-3.5 w-3.5 mr-2" />
+                Upload New Receipt
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <div className="bg-gray-50 rounded-full h-12 w-12 flex items-center justify-center mx-auto mb-3">
+              <ReceiptIcon className="h-6 w-6 text-gray-400" />
+            </div>
+            <h3 className="text-base font-medium text-gray-700 mb-1">No transactions yet</h3>
+            <p className="text-sm text-gray-500 mb-4 max-w-sm mx-auto">
+              Upload your first receipt to start tracking your expenses.
+            </p>
+            <Link href="/receipts/upload">
+              <Button variant="outline" size="sm">
+                Upload Your First Receipt
+              </Button>
+            </Link>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

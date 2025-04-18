@@ -1,9 +1,15 @@
 import { formatCurrency } from "@/lib/openai";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useEffect, useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { QueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { 
+  ArrowDownIcon, 
+  ArrowUpIcon, 
+  BadgeIndianRupeeIcon, 
+  CircleDollarSignIcon, 
+  CreditCardIcon, 
+  SparklesIcon
+} from "lucide-react";
 
 // Define the Stats type interface for better type checking
 interface Stats {
@@ -17,7 +23,11 @@ interface Stats {
 }
 
 const StatCards = () => {
-  const { toast } = useToast();
+  const { data: stats, isLoading } = useQuery<Stats>({
+    queryKey: ['/api/stats'],
+    retry: 2
+  });
+
   const [statsData, setStatsData] = useState<Stats>({
     totalSpend: 0,
     budgetRemaining: 0,
@@ -28,23 +38,11 @@ const StatCards = () => {
     spendingTrend: 0
   });
   
-  const { data: stats, isLoading, error, refetch } = useQuery<Stats>({
-    queryKey: ['/api/stats'],
-    retry: 2
-  });
-
-  // Update local state when stats data is received
   useEffect(() => {
     if (stats) {
-      console.log("Stats data received:", stats);
-      console.log("Total spend value:", stats.totalSpend);
-      console.log("Total spend type:", typeof stats.totalSpend);
       setStatsData(stats);
     }
-    if (error) {
-      console.error("Error fetching stats:", error);
-    }
-  }, [stats, error]);
+  }, [stats]);
 
   if (isLoading) {
     return (
@@ -60,71 +58,111 @@ const StatCards = () => {
     );
   }
 
+  const getPercentUsedColor = (totalSpend: number, budgetRemaining: number) => {
+    const percentUsed = Math.round((totalSpend / (totalSpend + budgetRemaining)) * 100);
+    if (percentUsed > 90) return "text-red-600";
+    if (percentUsed > 70) return "text-amber-600";
+    return "text-green-600";
+  };
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-      {/* Total Spending Card */}
-      <div className="bg-white overflow-hidden shadow rounded-lg">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      {/* Monthly Spending Card - Blue */}
+      <div className="overflow-hidden shadow-md rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200">
         <div className="px-4 py-5 sm:p-6">
-          <dl>
-            <dt className="text-sm font-medium text-gray-500 truncate">
-              Total Spending (All Time)
-            </dt>
-            <dd className="mt-1 text-3xl font-semibold text-gray-900">
+          <div className="flex justify-between items-start">
+            <div className="bg-blue-500 p-2 rounded-lg shadow-sm">
+              <BadgeIndianRupeeIcon className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex items-center text-xs font-medium text-blue-600 bg-white px-2 py-1 rounded-full shadow-sm">
+              {statsData.spendingTrend > 0 ? (
+                <ArrowUpIcon className="h-3 w-3 mr-1" />
+              ) : (
+                <ArrowDownIcon className="h-3 w-3 mr-1" />
+              )}
+              {Math.abs(statsData.spendingTrend)}% vs last month
+            </div>
+          </div>
+          <div className="mt-4">
+            <h3 className="text-sm font-medium text-blue-700">Monthly Spend</h3>
+            <p className="mt-2 text-3xl font-bold text-blue-900">
               {formatCurrency(statsData.totalSpend)}
-            </dd>
-            <dd className="mt-2 flex items-center text-sm">
-              <span className="text-danger font-medium flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-                {statsData.spendingTrend}%
-              </span>
-              <span className="text-gray-500 ml-2">vs last month</span>
-            </dd>
-          </dl>
+            </p>
+            <p className="mt-2 text-xs text-blue-600">
+              Based on your recent transactions
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Budget Remaining Card */}
-      <div className="bg-white overflow-hidden shadow rounded-lg">
+      {/* Budget Card - Green */}
+      <div className="overflow-hidden shadow-md rounded-xl bg-gradient-to-br from-green-50 to-green-100 border border-green-200">
         <div className="px-4 py-5 sm:p-6">
-          <dl>
-            <dt className="text-sm font-medium text-gray-500 truncate">
-              Budget Remaining
-            </dt>
-            <dd className="mt-1 text-3xl font-semibold text-gray-900">
-              {formatCurrency(statsData.budgetRemaining)}
-            </dd>
-            <dd className="mt-2 flex items-center text-sm">
-              <span className="text-warning font-medium">
-                {statsData.budgetRemaining > 0 
+          <div className="flex justify-between items-start">
+            <div className="bg-green-500 p-2 rounded-lg shadow-sm">
+              <CircleDollarSignIcon className="h-5 w-5 text-white" />
+            </div>
+            <div className={`flex items-center text-xs font-medium ${getPercentUsedColor(statsData.totalSpend, statsData.budgetRemaining)} bg-white px-2 py-1 rounded-full shadow-sm`}>
+              {statsData.budgetRemaining > 0 
                   ? `${Math.round((statsData.totalSpend / (statsData.totalSpend + statsData.budgetRemaining)) * 100)}% used` 
                   : '0% used'}
-              </span>
-              <span className="text-gray-500 ml-2">
-                of {formatCurrency(statsData.totalSpend + statsData.budgetRemaining)}
-              </span>
-            </dd>
-          </dl>
+            </div>
+          </div>
+          <div className="mt-4">
+            <h3 className="text-sm font-medium text-green-700">Budget Remaining</h3>
+            <p className="mt-2 text-3xl font-bold text-green-900">
+              {formatCurrency(statsData.budgetRemaining)}
+            </p>
+            <p className="mt-2 text-xs text-green-600">
+              of {formatCurrency(statsData.totalSpend + statsData.budgetRemaining)} total budget
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Recurring Expenses Card */}
-      <div className="bg-white overflow-hidden shadow rounded-lg">
+      {/* Potential Savings - Purple */}
+      <div className="overflow-hidden shadow-md rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200">
         <div className="px-4 py-5 sm:p-6">
-          <dl>
-            <dt className="text-sm font-medium text-gray-500 truncate">
-              Recurring Expenses
-            </dt>
-            <dd className="mt-1 text-3xl font-semibold text-gray-900">
+          <div className="flex justify-between items-start">
+            <div className="bg-purple-500 p-2 rounded-lg shadow-sm">
+              <SparklesIcon className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex items-center text-xs font-medium text-purple-600 bg-white px-2 py-1 rounded-full shadow-sm">
+              {statsData.suggestionsCount} opportunities
+            </div>
+          </div>
+          <div className="mt-4">
+            <h3 className="text-sm font-medium text-purple-700">Potential Savings</h3>
+            <p className="mt-2 text-3xl font-bold text-purple-900">
+              {formatCurrency(statsData.potentialSavings)}
+            </p>
+            <p className="mt-2 text-xs text-purple-600">
+              AI-suggested savings opportunities
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Recurring Expenses - Amber */}
+      <div className="overflow-hidden shadow-md rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200">
+        <div className="px-4 py-5 sm:p-6">
+          <div className="flex justify-between items-start">
+            <div className="bg-amber-500 p-2 rounded-lg shadow-sm">
+              <CreditCardIcon className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex items-center text-xs font-medium text-amber-600 bg-white px-2 py-1 rounded-full shadow-sm">
+              {statsData.subscriptionsCount} subscriptions
+            </div>
+          </div>
+          <div className="mt-4">
+            <h3 className="text-sm font-medium text-amber-700">Recurring Expenses</h3>
+            <p className="mt-2 text-3xl font-bold text-amber-900">
               {formatCurrency(statsData.recurringExpenses)}
-            </dd>
-            <dd className="mt-2 flex items-center text-sm">
-              <span className="text-gray-500">
-                {statsData.subscriptionsCount} subscriptions
-              </span>
-            </dd>
-          </dl>
+            </p>
+            <p className="mt-2 text-xs text-amber-600">
+              Monthly recurring payments
+            </p>
+          </div>
         </div>
       </div>
     </div>
