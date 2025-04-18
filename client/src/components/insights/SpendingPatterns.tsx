@@ -8,7 +8,29 @@ import { Skeleton } from "@/components/ui/skeleton";
 const SpendingPatterns = () => {
   const [expanded, setExpanded] = useState(false);
 
-  const { data: patternsData, isLoading, error } = useQuery({
+  interface MerchantData {
+    name: string;
+    frequency: number;
+    totalSpent: string;
+  }
+  
+  interface TrendData {
+    direction: 'up' | 'down';
+    description: string;
+  }
+  
+  interface PatternData {
+    patterns: string[];
+    frequentMerchants: MerchantData[];
+    categoryTrends: TrendData[];
+    unusualSpending: string[];
+  }
+  
+  interface SpendingPatternsResponse {
+    patterns: PatternData;
+  }
+  
+  const { data: patternsData, isLoading, error } = useQuery<SpendingPatternsResponse>({
     queryKey: ['/api/insights/spending-patterns'],
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
@@ -58,13 +80,6 @@ const SpendingPatterns = () => {
       </Card>
     );
   }
-
-  type PatternData = {
-    patterns: string[];
-    frequentMerchants: Array<{name: string; frequency: number; totalSpent: string}>;
-    categoryTrends: Array<{direction: 'up' | 'down'; description: string}>;
-    unusualSpending: string[];
-  };
   
   const patterns = patternsData?.patterns || {
     patterns: [],
@@ -125,7 +140,7 @@ const SpendingPatterns = () => {
               <div className="bg-blue-50 p-4 rounded-lg mb-4">
                 <h3 className="text-sm font-semibold text-blue-700 mb-2">Most Frequent Merchants</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {patterns.frequentMerchants.map((merchant: {name: string; frequency: number; totalSpent: string}, index: number) => (
+                  {patterns.frequentMerchants.map((merchant: MerchantData, index: number) => (
                     <div key={index} className="bg-white p-3 rounded-md shadow-sm border border-blue-100">
                       <div className="font-medium text-sm">{merchant.name}</div>
                       <div className="text-xs text-gray-600">
@@ -141,7 +156,7 @@ const SpendingPatterns = () => {
               <div className="mb-4">
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">Category Spending Trends</h3>
                 <div className="space-y-2">
-                  {patterns.categoryTrends.map((trend: {direction: 'up' | 'down'; description: string}, index: number) => (
+                  {patterns.categoryTrends.map((trend: TrendData, index: number) => (
                     <div key={index} className="flex items-center">
                       {trend.direction === 'up' ? (
                         <TrendingUp className="h-4 w-4 text-red-600 mr-2" />

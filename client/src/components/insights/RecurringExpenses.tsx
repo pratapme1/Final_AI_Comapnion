@@ -20,7 +20,11 @@ interface RecurringExpense {
 const RecurringExpenses = () => {
   const [expanded, setExpanded] = useState(false);
 
-  const { data, isLoading, error } = useQuery({
+  interface RecurringExpensesResponse {
+    recurringExpenses: RecurringExpense[];
+  }
+  
+  const { data, isLoading, error } = useQuery<RecurringExpensesResponse>({
     queryKey: ['/api/insights/recurring-expenses'],
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
