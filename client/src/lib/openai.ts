@@ -161,9 +161,25 @@ export async function uploadReceiptFile(file: File): Promise<any> {
 
 /**
  * Function to create a new receipt
- * @param data - The receipt data
+ * @param merchantName - Name of the merchant
+ * @param date - Date of the receipt
+ * @param total - Total amount of the receipt
+ * @param items - List of items in the receipt
+ * @param category - Optional category for the receipt
  */
-export async function createReceipt(data: any): Promise<any> {
-  const response = await apiRequest('POST', '/api/receipts', data);
+export async function createReceipt(
+  merchantName: string, 
+  date: Date, 
+  total: number, 
+  items: any[], 
+  category?: string
+): Promise<any> {
+  const response = await apiRequest('POST', '/api/receipts', {
+    merchantName,
+    date,
+    total,
+    items,
+    category
+  });
   return response;
 }
