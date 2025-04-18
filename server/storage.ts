@@ -234,17 +234,9 @@ export class MemStorage implements IStorage {
   }
   
   async getReceiptsByDateRange(userId: number, startDate: Date, endDate: Date): Promise<Receipt[]> {
-    // Debug the date ranges
-    console.log(`Searching for receipts between ${startDate.toISOString()} and ${endDate.toISOString()}`);
-    
-    const receipts = Array.from(this.receipts.values())
+    return Array.from(this.receipts.values())
       .filter((receipt) => {
         const receiptDate = new Date(receipt.date);
-        
-        // Debug receipt date comparisons
-        console.log(`Receipt ${receipt.id} date: ${receiptDate.toISOString()}, userId: ${receipt.userId}, matches user: ${receipt.userId === userId}`);
-        console.log(`Date comparison: >= ${startDate.toISOString()}: ${receiptDate >= startDate}, <= ${endDate.toISOString()}: ${receiptDate <= endDate}`);
-        
         return (
           receipt.userId === userId &&
           receiptDate >= startDate &&
@@ -252,9 +244,6 @@ export class MemStorage implements IStorage {
         );
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      
-    console.log(`Found ${receipts.length} receipts in date range`);
-    return receipts;
   }
   
   async getReceipt(id: number): Promise<Receipt | undefined> {
@@ -336,76 +325,41 @@ export class MemStorage implements IStorage {
   async getStats(userId: number): Promise<Stats> {
     const currentMonth = new Date().toISOString().slice(0, 7);
     
-    // Get all receipts for the user (no date filtering)
-    const allReceipts = await this.getReceipts(userId);
-    
-    // Also get current month receipts for budget calculations
+    // Get all receipts for the current month
     const today = new Date();
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     
-    const currentMonthReceipts = await this.getReceiptsByDateRange(userId, startOfMonth, endOfMonth);
+    const receipts = await this.getReceiptsByDateRange(userId, startOfMonth, endOfMonth);
     const budgets = await this.getBudgetsByMonth(userId, currentMonth);
     
-    // Debug log the receipts we're calculating totals from
-    console.log(`Calculating stats for user ${userId}, found ${allReceipts.length} total receipts`);
-    if (allReceipts.length > 0) {
-      console.log('Receipt totals:', allReceipts.map(r => ({
-        id: r.id,
-        merchantName: r.merchantName,
-        total: r.total,
-        totalType: typeof r.total,
-        itemsCount: r.items?.length || 0
-      })));
-    }
-    
-    // Calculate total spend from ALL receipts - properly handle invalid totals
+    // Calculate total spend from receipts - properly handle invalid totals
     let totalSpend = 0;
-    for (const receipt of allReceipts) {
+    for (const receipt of receipts) {
       // First try to use the receipt total
       const receiptTotal = parseFloat(receipt.total);
       if (!isNaN(receiptTotal)) {
-        console.log(`Adding receipt total: ${receiptTotal} from ${receipt.merchantName}`);
         totalSpend += receiptTotal;
       } else if (receipt.items && receipt.items.length > 0) {
         // If total is not valid, calculate from items
-        const itemsTotal = receipt.items.reduce((sum, item) => {
-          const itemPrice = typeof item.price === 'number' ? item.price : 0;
-          return sum + itemPrice;
-        }, 0);
-        console.log(`Adding calculated items total: ${itemsTotal} from ${receipt.merchantName}`);
+        const itemsTotal = receipt.items.reduce((sum, item) => sum + (item.price || 0), 0);
         totalSpend += itemsTotal;
-      }
-    }
-    
-    console.log(`Final total spend calculated: ${totalSpend}`);
-    
-    // Calculate current month's total for budget calculations
-    let currentMonthSpend = 0;
-    for (const receipt of currentMonthReceipts) {
-      const receiptTotal = parseFloat(receipt.total);
-      if (!isNaN(receiptTotal)) {
-        currentMonthSpend += receiptTotal;
-      } else if (receipt.items && receipt.items.length > 0) {
-        currentMonthSpend += receipt.items.reduce((sum, item) => {
-          const itemPrice = typeof item.price === 'number' ? item.price : 0;
-          return sum + itemPrice;
-        }, 0);
       }
     }
     
     // Calculate budget total and remaining
     const budgetTotal = budgets.reduce((sum, budget) => sum + Number(budget.limit), 0);
-    const budgetRemaining = Math.max(0, budgetTotal - currentMonthSpend);
+    const budgetRemaining = Math.max(0, budgetTotal - totalSpend);
+    
+    // Count potential savings based on insights
+    const savingsInsights = await this.getInsightsByType(userId, 'saving');
+    const potentialSavings = savingsInsights.length * 150; // Approximation for demo
     
     // Count recurring expenses
-    const recurringItems = currentMonthReceipts.flatMap(receipt => 
+    const recurringItems = receipts.flatMap(receipt => 
       receipt.items.filter(item => item.recurring)
     );
-    const recurringTotal = recurringItems.reduce((sum, item) => {
-      const itemPrice = typeof item.price === 'number' ? item.price : 0;
-      return sum + itemPrice;
-    }, 0);
+    const recurringTotal = recurringItems.reduce((sum, item) => sum + (item.price || 0), 0);
     
     // Count unique subscriptions by name
     const subscriptionNames = new Set(
@@ -420,20 +374,15 @@ export class MemStorage implements IStorage {
     // Calculate spending trend (dummy value for demo)
     const spendingTrend = 12.5;
     
-    // Create final stats object with proper numerical values
-    const result = {
-      totalSpend: Number(totalSpend.toFixed(2)),
-      budgetRemaining: Number(budgetRemaining.toFixed(2)),
-      potentialSavings: 0, // Removed as requested
-      suggestionsCount: 0, // Set to 0 since potentialSavings is removed
-      recurringExpenses: Number(recurringTotal.toFixed(2)),
+    return {
+      totalSpend,
+      budgetRemaining,
+      potentialSavings,
+      suggestionsCount: savingsInsights.length,
+      recurringExpenses: recurringTotal,
       subscriptionsCount: subscriptionNames.size,
-      spendingTrend: Number(spendingTrend.toFixed(2))
+      spendingTrend
     };
-    
-    console.log(`Returning stats for user ${userId}:`, result);
-    
-    return result;
   }
   
   async getBudgetStatuses(userId: number): Promise<BudgetStatus[]> {
@@ -624,7 +573,6 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Switch to PostgreSQL DatabaseStorage implementation
 export class DatabaseStorage implements IStorage {
   public sessionStore: any; // Fix type issue with session.SessionStore
 
@@ -1046,4 +994,5 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Switch from in-memory storage to PostgreSQL database storage
+export const storage = new DatabaseStorage();

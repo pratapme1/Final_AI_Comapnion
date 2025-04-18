@@ -994,4 +994,5 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Switch from in-memory storage to PostgreSQL database storage
+export const storage = new DatabaseStorage();
