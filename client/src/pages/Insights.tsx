@@ -295,15 +295,15 @@ const Insights = () => {
               </div>
 
               {Object.keys(countByType).map((tabKey) => (
-                <TabsContent key={tabKey} value={tabKey} className="p-4 bg-white">
+                <TabsContent key={tabKey} value={tabKey} className="p-3 sm:p-4 bg-white">
                   {isLoading ? (
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                       {[...Array(3)].map((_, index) => (
                         <Card key={index} className="bg-gray-50 border-gray-100">
-                          <CardContent className="p-6">
+                          <CardContent className="p-3 sm:p-6">
                             <div className="flex items-start">
-                              <Skeleton className="h-10 w-10 rounded-full mr-4" />
-                              <div className="flex-1 space-y-2">
+                              <Skeleton className="h-8 w-8 sm:h-10 sm:w-10 rounded-full mr-3 sm:mr-4" />
+                              <div className="flex-1 space-y-1 sm:space-y-2">
                                 <Skeleton className="h-4 w-1/3" />
                                 <Skeleton className="h-3 w-full" />
                                 <Skeleton className="h-3 w-full" />
@@ -315,18 +315,18 @@ const Insights = () => {
                       ))}
                     </div>
                   ) : filteredInsights?.length > 0 ? (
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                       {filteredInsights.map((insight: any) => (
                         <InsightCard key={insight.id} insight={insight} />
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-10">
-                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-                        <LightbulbIcon className="h-8 w-8 text-gray-400" />
+                    <div className="text-center py-6 sm:py-10">
+                      <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gray-100 mb-3 sm:mb-4">
+                        <LightbulbIcon className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400" />
                       </div>
-                      <h3 className="text-lg font-medium text-gray-700 mb-2">No insights yet</h3>
-                      <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
+                      <h3 className="text-base sm:text-lg font-medium text-gray-700 mb-1 sm:mb-2">No insights yet</h3>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6 max-w-md mx-auto px-2 sm:px-0">
                         Generate your first insights by analyzing your receipts or creating a weekly digest.
                       </p>
                       <Button
@@ -341,7 +341,7 @@ const Insights = () => {
                           }
                         }}
                       >
-                        <Sparkles className="mr-2 h-4 w-4" />
+                        <Sparkles className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                         Generate {tabKey === 'digest' ? 'Weekly Digest' : 'Insights'}
                       </Button>
                     </div>
@@ -357,14 +357,14 @@ const Insights = () => {
               <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-gray-600" />
               How AI Financial Insights Works
             </h3>
-            <div className="bg-gradient-to-r from-white to-gray-50 rounded-lg p-5 border">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+            <div className="bg-gradient-to-r from-white to-gray-50 rounded-lg p-3 sm:p-5 border">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 sm:gap-x-8 gap-y-4 sm:gap-y-6">
                 <div className="flex items-start">
-                  <div className="bg-primary/10 p-2 rounded-full mr-4">
-                    <Receipt className="h-5 w-5 text-primary" />
+                  <div className="bg-primary/10 p-1.5 sm:p-2 rounded-full mr-3 sm:mr-4 shrink-0">
+                    <Receipt className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-medium mb-1">1. Data Collection</h4>
+                    <h4 className="text-sm font-medium mb-0.5 sm:mb-1">1. Data Collection</h4>
                     <p className="text-xs text-gray-600">
                       Smart Ledger securely collects and processes your receipt data
                     </p>
@@ -372,11 +372,11 @@ const Insights = () => {
                 </div>
                 
                 <div className="flex items-start">
-                  <div className="bg-primary/10 p-2 rounded-full mr-4">
-                    <Sparkles className="h-5 w-5 text-primary" />
+                  <div className="bg-primary/10 p-1.5 sm:p-2 rounded-full mr-3 sm:mr-4 shrink-0">
+                    <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-medium mb-1">2. AI Analysis</h4>
+                    <h4 className="text-sm font-medium mb-0.5 sm:mb-1">2. AI Analysis</h4>
                     <p className="text-xs text-gray-600">
                       Advanced AI algorithms detect patterns and analyze your transactions
                     </p>
@@ -384,11 +384,11 @@ const Insights = () => {
                 </div>
                 
                 <div className="flex items-start">
-                  <div className="bg-primary/10 p-2 rounded-full mr-4">
-                    <LightbulbIcon className="h-5 w-5 text-primary" />
+                  <div className="bg-primary/10 p-1.5 sm:p-2 rounded-full mr-3 sm:mr-4 shrink-0">
+                    <LightbulbIcon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-medium mb-1">3. Insights Generation</h4>
+                    <h4 className="text-sm font-medium mb-0.5 sm:mb-1">3. Insights Generation</h4>
                     <p className="text-xs text-gray-600">
                       AI creates personalized insights based on your unique financial profile
                     </p>
@@ -396,11 +396,11 @@ const Insights = () => {
                 </div>
                 
                 <div className="flex items-start">
-                  <div className="bg-primary/10 p-2 rounded-full mr-4">
-                    <ArrowRightIcon className="h-5 w-5 text-primary" />
+                  <div className="bg-primary/10 p-1.5 sm:p-2 rounded-full mr-3 sm:mr-4 shrink-0">
+                    <ArrowRightIcon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-medium mb-1">4. Actionable Recommendations</h4>
+                    <h4 className="text-sm font-medium mb-0.5 sm:mb-1">4. Actionable Recommendations</h4>
                     <p className="text-xs text-gray-600">
                       Turn insights into action with specific suggestions to improve your finances
                     </p>
@@ -408,8 +408,8 @@ const Insights = () => {
                 </div>
               </div>
               
-              <div className="mt-6 pt-4 border-t border-gray-200">
-                <p className="text-xs text-gray-500">
+              <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-200">
+                <p className="text-xs text-gray-500 text-center sm:text-left">
                   All analysis happens securely on our servers. Your data is never shared with third parties.
                 </p>
               </div>
