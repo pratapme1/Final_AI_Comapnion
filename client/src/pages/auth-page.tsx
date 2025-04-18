@@ -425,16 +425,11 @@ const AuthPage = () => {
                   <div className="flex-grow border-t border-gray-200"></div>
                 </div>
                 
-                {/* Social Proof */}
-                <div className="text-center">
-                  <p className="text-xs text-gray-500 mb-2">Used by 10,000+ people worldwide</p>
-                  <div className="flex justify-center space-x-2">
-                    <div className="h-6 w-6 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center text-white text-xs">★</div>
-                    <div className="h-6 w-6 rounded-full bg-gradient-to-r from-purple-400 to-pink-500 flex items-center justify-center text-white text-xs">★</div>
-                    <div className="h-6 w-6 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 flex items-center justify-center text-white text-xs">★</div>
-                    <div className="h-6 w-6 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs">★</div>
-                    <div className="h-6 w-6 rounded-full bg-gradient-to-r from-green-400 to-teal-500 flex items-center justify-center text-white text-xs">★</div>
-                  </div>
+                {/* Colorful Divider Stars */}
+                <div className="flex justify-center space-x-2 mt-2">
+                  <div className="h-5 w-5 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center text-white text-xs shadow-sm">★</div>
+                  <div className="h-5 w-5 rounded-full bg-gradient-to-r from-purple-400 to-pink-500 flex items-center justify-center text-white text-xs shadow-sm">★</div>
+                  <div className="h-5 w-5 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 flex items-center justify-center text-white text-xs shadow-sm">★</div>
                 </div>
               </TabsContent>
 
