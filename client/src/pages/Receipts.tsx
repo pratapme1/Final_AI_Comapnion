@@ -34,21 +34,29 @@ const Receipts = () => {
   // Render the receipts list page
   const renderReceiptsList = () => (
     <>
-      {/* Page header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Receipts & Transactions</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            View and manage your purchase history with AI insights
-          </p>
-        </div>
-        <div className="mt-4 md:mt-0">
-          <Link to="/receipts/upload">
-            <Button className="inline-flex items-center">
-              <Plus className="mr-2 h-4 w-4" />
-              Upload Receipt
-            </Button>
-          </Link>
+      {/* Page header with gradient background */}
+      <div className="rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 p-6 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 mr-2 text-primary">
+                <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+                <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
+                <path d="M12 6v2" />
+                <path d="M12 16v2" />
+              </svg>
+              Receipts & Transactions
+            </h1>
+            <p className="text-sm text-gray-600 mt-1">View and manage your purchase history with AI insights</p>
+          </div>
+          <div className="mt-4 md:mt-0">
+            <Link to="/receipts/upload">
+              <Button className="inline-flex items-center bg-primary">
+                <Plus className="mr-2 h-4 w-4" />
+                Upload Receipt
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -107,14 +115,27 @@ const Receipts = () => {
   // Render the receipt upload page
   const renderReceiptUpload = () => (
     <>
-      <div className="mb-6">
-        <Link to="/receipts">
-          <Button variant="outline" className="mb-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Receipts
-          </Button>
-        </Link>
-        <h1 className="text-2xl font-semibold text-gray-900">Upload Receipt</h1>
+      {/* Header with gradient background */}
+      <div className="rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 p-6 mb-8 border-l-4 border-l-green-500">
+        <div>
+          <Link to="/receipts">
+            <Button variant="outline" className="mb-4 bg-white hover:bg-gray-50">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Receipts
+            </Button>
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 mr-2 text-green-600">
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+              <polyline points="14 2 14 8 20 8" />
+              <path d="M12 18v-6" />
+              <path d="M8 18v-1" />
+              <path d="M16 18v-3" />
+            </svg>
+            Upload Receipt
+          </h1>
+          <p className="text-sm text-gray-600 mt-1">Upload a new receipt for AI-powered analysis and tracking</p>
+        </div>
       </div>
       <ReceiptUpload />
     </>
@@ -123,14 +144,26 @@ const Receipts = () => {
   // Render receipt detail page
   const renderReceiptDetail = (id: string) => (
     <>
-      <div className="mb-6">
-        <Link to="/receipts">
-          <Button variant="outline" className="mb-4">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Receipts
-          </Button>
-        </Link>
-        <h1 className="text-2xl font-semibold text-gray-900">Receipt Details</h1>
+      {/* Header with gradient background */}
+      <div className="rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 p-6 mb-8 border-l-4 border-l-blue-500">
+        <div>
+          <Link to="/receipts">
+            <Button variant="outline" className="mb-4 bg-white hover:bg-gray-50">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Receipts
+            </Button>
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 mr-2 text-blue-600">
+              <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+              <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
+              <path d="M12 6v2" />
+              <path d="M12 16v2" />
+            </svg>
+            Receipt Details
+          </h1>
+          <p className="text-sm text-gray-600 mt-1">View detailed information and insights for this transaction</p>
+        </div>
       </div>
       <ReceiptDetail id={parseInt(id)} />
     </>

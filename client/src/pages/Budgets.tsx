@@ -156,26 +156,42 @@ const Budgets = () => {
 
   return (
     <div>
-      {/* Page header with animated gradient */}
-      <div className="relative overflow-hidden rounded-lg mb-6 bg-gradient-to-r from-blue-600 to-violet-600 p-8 text-white">
-        <div className="relative z-10">
-          <h1 className="text-3xl font-bold text-white mb-2">Budget Management</h1>
-          <p className="text-blue-100 max-w-2xl">
-            Create and manage your category budgets to track spending, identify patterns, 
-            and achieve your financial goals with smart AI-powered insights.
-          </p>
-        </div>
-        <div className="absolute top-0 right-0 -mt-4 -mr-4 opacity-20">
-          <PiggyBank className="w-64 h-64" />
+      {/* Page header with gradient background */}
+      <div className="rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 p-6 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+              <PiggyBank className="h-6 w-6 mr-2 text-primary" />
+              Budget Management
+            </h1>
+            <p className="text-sm text-gray-600 mt-1">
+              Create and manage your category budgets to track spending and achieve your financial goals
+            </p>
+          </div>
+          <div className="mt-4 md:mt-0">
+            <Button 
+              onClick={toggleForm} 
+              className={`inline-flex items-center ${!showForm ? 'bg-primary' : ''}`}
+              variant={showForm ? "outline" : "default"}
+            >
+              {showForm 
+                ? "Cancel" 
+                : <>
+                    <PlusIcon className="mr-2 h-4 w-4" />
+                    {budgets.length > 0 ? "Add New Budget" : "Create First Budget"}
+                  </>
+              }
+            </Button>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Budget Summary Card */}
-        <Card className="bg-white border-blue-100 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-blue-500" />
+        <Card className="overflow-hidden border-t-4 border-t-blue-500 shadow-md hover:shadow-lg transition-shadow">
+          <CardHeader className="pb-2 bg-gradient-to-r from-gray-50 to-white">
+            <CardTitle className="text-lg flex items-center">
+              <BarChart3 className="h-5 w-5 mr-2 text-blue-500" />
               Budget Overview
             </CardTitle>
           </CardHeader>
@@ -214,10 +230,10 @@ const Budgets = () => {
         </Card>
 
         {/* Budget Actions Card */}
-        <Card className="bg-white border-blue-100 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-blue-500" />
+        <Card className="overflow-hidden border-t-4 border-t-green-500 shadow-md hover:shadow-lg transition-shadow">
+          <CardHeader className="pb-2 bg-gradient-to-r from-gray-50 to-white">
+            <CardTitle className="text-lg flex items-center">
+              <TrendingUp className="h-5 w-5 mr-2 text-green-500" />
               This Month's Status
             </CardTitle>
           </CardHeader>
@@ -268,9 +284,16 @@ const Budgets = () => {
         </Card>
 
         {/* Quick Actions Card */}
-        <Card className="bg-white border-blue-100 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Quick Actions</CardTitle>
+        <Card className="overflow-hidden border-t-4 border-t-purple-500 shadow-md hover:shadow-lg transition-shadow">
+          <CardHeader className="pb-2 bg-gradient-to-r from-gray-50 to-white">
+            <CardTitle className="text-lg flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-2 text-purple-500">
+                <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path>
+                <path d="M9 18h6"></path>
+                <path d="M10 22h4"></path>
+              </svg>
+              Quick Actions
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Button 
@@ -357,10 +380,10 @@ const Budgets = () => {
       </div>
 
       {/* Budget Insights */}
-      <Card className="border-blue-100 bg-gradient-to-br from-blue-50 to-white">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-            <PiggyBank className="h-5 w-5 text-blue-500" />
+      <Card className="overflow-hidden border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-shadow">
+        <CardHeader className="pb-2 bg-gradient-to-r from-gray-50 to-white">
+          <CardTitle className="text-xl font-semibold text-gray-900 flex items-center">
+            <LightbulbIcon className="h-5 w-5 mr-2 text-blue-500" />
             Budget Insights
           </CardTitle>
           <CardDescription>
