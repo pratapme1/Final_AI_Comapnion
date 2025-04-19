@@ -1,5 +1,8 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+// Use environment variable for API base URL if available
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+
 // Cache for pending requests to avoid duplicate network calls
 const pendingRequests = new Map<string, Promise<any>>();
 
@@ -49,7 +52,10 @@ export async function apiRequest(
   }
   
   // Create the fetch promise with improved configuration
-  const fetchPromise = fetch(url, {
+  // Use API_BASE_URL if the url doesn't already include http(s)
+  const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+  
+  const fetchPromise = fetch(fullUrl, {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
