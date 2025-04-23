@@ -51,7 +51,9 @@ router.get('/auth/:providerType', requireAuth, async (req: Request, res: Respons
     const userId = req.user!.id;
     const authUrl = emailService.getAuthUrl(userId, providerType as EmailProviderType);
     
-    res.json({ authUrl });
+    // Redirect to the auth URL directly instead of returning JSON
+    console.log(`Redirecting to OAuth URL: ${authUrl}`);
+    return res.redirect(authUrl);
   } catch (error) {
     console.error('Error generating auth URL:', error);
     res.status(500).json({ 
