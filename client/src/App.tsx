@@ -151,8 +151,8 @@ function Router() {
               <ProtectedRoute path="/receipts" component={Receipts} />
               <ProtectedRoute path="/analytics" component={Analytics} />
               <ProtectedRoute path="/insights" component={Insights} />
-              <Route path="/oauth/callback/gmail">
-                {() => <OAuthCallbackPage providerType="gmail" />}
+              <Route path="/oauth/callback/:provider">
+                {(params) => <OAuthCallbackPage />}
               </Route>
               <Route component={NotFound} />
             </Switch>

@@ -1,20 +1,91 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Loader2 } from "lucide-react";
 import EmailProvidersList from "@/components/receipts/EmailProvidersList";
 import SyncJobHistory from "@/components/receipts/SyncJobHistory";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function EmailSettings() {
+  const { toast } = useToast();
+  
   // Check if email integration is available
-  const { data: emailEnabled, isLoading, error } = useQuery({
+  const statusQuery = useQuery({
     queryKey: ["/api/email/status"],
     // This is a simple ping to check if the email API is available
     retry: false,
   });
+  
+  // Fetch connected email providers
+  const providersQuery = useQuery({
+    queryKey: ["/api/email/providers"],
+  });
+  
+  // Fetch sync jobs history
+  const syncJobsQuery = useQuery({
+    queryKey: ["/api/email/sync-jobs"],
+  });
+  
+  // Start a new sync job for a provider
+  const startSyncMutation = useMutation({
+    mutationFn: async (providerId: number) => {
+      const response = await apiRequest("POST", `/api/email/providers/${providerId}/sync`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Sync started",
+        description: "We'll check your emails for receipts. This may take a few minutes.",
+      });
+      
+      // Refresh queries after starting a sync
+      queryClient.invalidateQueries({ queryKey: ["/api/email/sync-jobs"] });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Failed to start sync",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Disconnect an email provider
+  const disconnectMutation = useMutation({
+    mutationFn: async (providerId: number) => {
+      await apiRequest("DELETE", `/api/email/providers/${providerId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Email provider disconnected",
+        description: "Your email account has been disconnected successfully.",
+      });
+      
+      // Refresh providers list
+      queryClient.invalidateQueries({ queryKey: ["/api/email/providers"] });
+    },
+    onError: () => {
+      toast({
+        title: "Error disconnecting provider",
+        description: "Failed to disconnect email provider. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Get providers from query response safely
+  const providers = providersQuery.data || [];
+  
+  // Get sync jobs from query response safely
+  const syncJobs = syncJobsQuery.data || [];
+  
+  // Check if any sync job is in progress
+  const isSyncing = Array.isArray(syncJobs) && 
+    syncJobs.some((job: any) => job.status === "pending" || job.status === "in_progress");
 
-  if (isLoading) {
+  if (statusQuery.isLoading) {
     return (
       <div className="flex justify-center items-center p-8">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -22,7 +93,7 @@ export default function EmailSettings() {
     );
   }
 
-  if (error) {
+  if (statusQuery.error) {
     return (
       <Alert variant="destructive" className="mb-6">
         <AlertCircle className="h-4 w-4" />

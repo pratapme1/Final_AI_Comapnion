@@ -1,251 +1,163 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Mail, RefreshCw, Trash2, AlertTriangle } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { RefreshCw, Trash2, Mail, AlertCircle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
 
-export default function EmailProvidersList() {
-  const { toast } = useToast();
-  const [syncInProgress, setSyncInProgress] = useState<Record<number, boolean>>({});
+interface EmailProvider {
+  id: number;
+  provider: string;
+  email: string;
+  lastSyncAt: string | null;
+}
+
+interface EmailProvidersListProps {
+  providers: EmailProvider[];
+  isLoading: boolean;
+  onSync: (providerId: number) => void;
+  onDisconnect: (providerId: number) => void;
+  isSyncing: boolean;
+}
+
+const formatLastSyncTime = (lastSyncAt: string | null): string => {
+  if (!lastSyncAt) return "Never synced";
   
-  // Fetch connected email providers
-  const { 
-    data: providers = [], 
-    isLoading, 
-    error,
-    isError
-  } = useQuery({
-    queryKey: ["/api/email/providers"],
-    refetchInterval: (data) => {
-      // Check if any sync is in progress
-      const anySyncInProgress = Object.values(syncInProgress).some(Boolean);
-      return anySyncInProgress ? 5000 : false;
-    }
-  });
+  const syncDate = new Date(lastSyncAt);
+  const now = new Date();
+  const diffMs = now.getTime() - syncDate.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   
-  // Connect new provider
-  const connectGmailMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("GET", "/api/email/auth/gmail");
-      return await res.json();
-    },
-    onSuccess: (data) => {
-      // Redirect to Google OAuth page
-      window.location.href = data.authUrl;
-    },
-    onError: (error) => {
-      toast({
-        title: "Failed to connect Gmail",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-  
-  // Delete provider
-  const deleteProviderMutation = useMutation({
-    mutationFn: async (providerId: number) => {
-      await apiRequest("DELETE", `/api/email/providers/${providerId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/email/providers"] });
-      toast({
-        title: "Email provider removed",
-        description: "Your email account has been disconnected successfully.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Failed to remove provider",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-  
-  // Start email sync
-  const startSyncMutation = useMutation({
-    mutationFn: async (providerId: number) => {
-      const res = await apiRequest("POST", `/api/email/providers/${providerId}/sync`);
-      return await res.json();
-    },
-    onSuccess: (data, providerId) => {
-      setSyncInProgress((prev) => ({ ...prev, [providerId]: true }));
-      // Poll for sync job completion
-      pollSyncStatus(data.syncJob.id, providerId);
-      toast({
-        title: "Email sync started",
-        description: "We're scanning your emails for receipts. This may take a few minutes.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Failed to start sync",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-  
-  // Poll sync status
-  const pollSyncStatus = async (syncJobId: number, providerId: number) => {
-    try {
-      const res = await apiRequest("GET", `/api/email/sync/${syncJobId}`);
-      const syncJob = await res.json();
-      
-      if (syncJob.status === 'completed' || syncJob.status === 'failed') {
-        setSyncInProgress((prev) => ({ ...prev, [providerId]: false }));
-        queryClient.invalidateQueries({ queryKey: ["/api/receipts"] });
-        toast({
-          title: syncJob.status === 'completed' ? "Email sync completed" : "Email sync failed",
-          description: syncJob.status === 'completed' 
-            ? `Found ${syncJob.receiptsFound || 0} receipts in your emails.`
-            : syncJob.errorMessage || "An error occurred during sync.",
-          variant: syncJob.status === 'completed' ? "default" : "destructive",
-        });
-      } else {
-        // Continue polling
-        setTimeout(() => pollSyncStatus(syncJobId, providerId), 5000);
-      }
-    } catch (error) {
-      setSyncInProgress((prev) => ({ ...prev, [providerId]: false }));
-      toast({
-        title: "Failed to check sync status",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
-        variant: "destructive",
-      });
-    }
-  };
-  
+  if (diffMins < 60) {
+    return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+  } else if (diffHours < 24) {
+    return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+  } else if (diffDays < 30) {
+    return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+  } else {
+    return syncDate.toLocaleDateString();
+  }
+};
+
+const EmailProvidersList = ({ 
+  providers, 
+  isLoading, 
+  onSync, 
+  onDisconnect,
+  isSyncing
+}: EmailProvidersListProps) => {
+  const [providerId, setProviderId] = useState<number | null>(null);
+
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center p-8">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="space-y-3">
+        <Skeleton className="h-24 w-full rounded-lg" />
+        <Skeleton className="h-24 w-full rounded-lg" />
       </div>
     );
   }
-  
-  if (isError) {
-    return (
-      <Alert variant="destructive" className="mb-6">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Error loading email providers</AlertTitle>
-        <AlertDescription>
-          {error instanceof Error ? error.message : "Something went wrong. Please try again later."}
-        </AlertDescription>
-      </Alert>
-    );
+
+  if (!Array.isArray(providers) || providers.length === 0) {
+    return null;
   }
 
-  // Type assertion for providers
-  const providersList = Array.isArray(providers) ? providers : [];
-  
   return (
-    <div className="space-y-6">
-      {/* Connected providers */}
-      {providersList.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          {providersList.map((provider: any) => (
-            <Card key={provider.id}>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle className="flex items-center gap-2">
-                    <Mail className="h-5 w-5" />
-                    {provider.email}
-                  </CardTitle>
-                  <Badge>{provider.providerType}</Badge>
+    <div className="space-y-4">
+      {providers.map((provider) => (
+        <Card key={provider.id} className="p-4 relative overflow-hidden">
+          {/* Provider indicator strip */}
+          <div className={`absolute left-0 top-0 bottom-0 w-1 ${provider.provider === 'gmail' ? 'bg-red-500' : provider.provider === 'outlook' ? 'bg-blue-500' : 'bg-gray-500'}`}></div>
+          
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            {/* Provider info */}
+            <div className="mb-3 sm:mb-0">
+              <div className="flex items-center">
+                <Mail className={`mr-2 h-5 w-5 ${provider.provider === 'gmail' ? 'text-red-500' : provider.provider === 'outlook' ? 'text-blue-500' : 'text-gray-500'}`} />
+                <div>
+                  <p className="font-medium text-gray-900">{provider.email}</p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Badge variant="outline" className="capitalize text-xs">
+                      {provider.provider}
+                    </Badge>
+                    <span className="text-xs text-gray-500">
+                      Last sync: {formatLastSyncTime(provider.lastSyncAt)}
+                    </span>
+                  </div>
                 </div>
-                <CardDescription>
-                  {provider.lastSyncAt 
-                    ? `Last synced: ${new Date(provider.lastSyncAt).toLocaleString()}`
-                    : 'Not synced yet'}
-                </CardDescription>
-              </CardHeader>
-              <CardFooter className="flex justify-between">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => deleteProviderMutation.mutate(provider.id)}
-                  disabled={syncInProgress[provider.id] || deleteProviderMutation.isPending}
-                >
-                  {deleteProviderMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4 mr-2" />
-                  )}
-                  Disconnect
-                </Button>
-                <Button
-                  onClick={() => startSyncMutation.mutate(provider.id)}
-                  disabled={syncInProgress[provider.id] || startSyncMutation.isPending}
-                >
-                  {syncInProgress[provider.id] ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Syncing...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Sync Receipts
-                    </>
-                  )}
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>No Email Accounts Connected</CardTitle>
-            <CardDescription>
-              Connect your email account to automatically import receipts from your inbox.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">
-              When you connect an email account, Smart Ledger will scan your inbox for receipts
-              and automatically import them. We only look for emails that contain receipts and
-              never store your email password.
-            </p>
-          </CardContent>
-          <CardFooter>
-            <Button
-              onClick={() => connectGmailMutation.mutate()}
-              disabled={connectGmailMutation.isPending}
-            >
-              {connectGmailMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Mail className="mr-2 h-4 w-4" />
-              )}
-              Connect Gmail
-            </Button>
-          </CardFooter>
+              </div>
+            </div>
+            
+            {/* Actions */}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onSync(provider.id)}
+                disabled={isSyncing}
+                className="text-xs h-8"
+              >
+                {isSyncing ? (
+                  <>
+                    <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
+                    Syncing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-1 h-3 w-3" />
+                    Sync Now
+                  </>
+                )}
+              </Button>
+              
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-8 border-red-200 text-red-700 hover:bg-red-50"
+                    onClick={() => setProviderId(provider.id)}
+                  >
+                    <Trash2 className="mr-1 h-3 w-3" />
+                    Disconnect
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Disconnect Email Account</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to disconnect {provider.email}? This will remove access to scan this account for receipts.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={() => onDisconnect(provider.id)}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Disconnect
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
         </Card>
-      )}
-      
-      {/* Add more providers button */}
-      {providersList.length > 0 && (
-        <Button
-          variant="outline"
-          onClick={() => connectGmailMutation.mutate()}
-          disabled={connectGmailMutation.isPending}
-          className="mt-4"
-        >
-          {connectGmailMutation.isPending ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Mail className="mr-2 h-4 w-4" />
-          )}
-          Connect Another Account
-        </Button>
-      )}
+      ))}
     </div>
   );
-}
+};
+
+export default EmailProvidersList;
