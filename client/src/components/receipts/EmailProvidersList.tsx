@@ -18,7 +18,7 @@ import { useState } from "react";
 
 interface EmailProvider {
   id: number;
-  provider: string;
+  providerType: string;
   email: string;
   lastSyncAt: string | null;
 }
@@ -79,18 +79,18 @@ const EmailProvidersList = ({
       {providers.map((provider) => (
         <Card key={provider.id} className="p-4 relative overflow-hidden">
           {/* Provider indicator strip */}
-          <div className={`absolute left-0 top-0 bottom-0 w-1 ${provider.provider === 'gmail' ? 'bg-red-500' : provider.provider === 'outlook' ? 'bg-blue-500' : 'bg-gray-500'}`}></div>
+          <div className={`absolute left-0 top-0 bottom-0 w-1 ${provider.providerType === 'gmail' ? 'bg-red-500' : provider.providerType === 'outlook' ? 'bg-blue-500' : 'bg-gray-500'}`}></div>
           
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             {/* Provider info */}
             <div className="mb-3 sm:mb-0">
               <div className="flex items-center">
-                <Mail className={`mr-2 h-5 w-5 ${provider.provider === 'gmail' ? 'text-red-500' : provider.provider === 'outlook' ? 'text-blue-500' : 'text-gray-500'}`} />
+                <Mail className={`mr-2 h-5 w-5 ${provider.providerType === 'gmail' ? 'text-red-500' : provider.providerType === 'outlook' ? 'text-blue-500' : 'text-gray-500'}`} />
                 <div>
                   <p className="font-medium text-gray-900">{provider.email}</p>
                   <div className="flex items-center gap-1.5 mt-1">
                     <Badge variant="outline" className="capitalize text-xs">
-                      {provider.provider}
+                      {provider.providerType}
                     </Badge>
                     <span className="text-xs text-gray-500">
                       Last sync: {formatLastSyncTime(provider.lastSyncAt)}
