@@ -66,10 +66,28 @@ fi
 echo "✅ Default data setup complete"
 
 # Set up APP_URL if not already set
-if [ -z "$APP_URL" ] && [ -n "$REPLIT_DOMAINS" ]; then
-  DOMAIN=$(echo $REPLIT_DOMAINS | cut -d ',' -f1)
-  export APP_URL="https://$DOMAIN"
-  echo "ℹ️ APP_URL not set, using Replit domain: $APP_URL"
+if [ -z "$APP_URL" ]; then
+  # Use custom domain if provided in environment
+  if [ -n "$CUSTOM_DOMAIN" ]; then
+    export APP_URL="https://$CUSTOM_DOMAIN"
+    echo "ℹ️ APP_URL not set, using custom domain: $APP_URL"
+  # Otherwise, use Replit domain if available
+  elif [ -n "$REPLIT_DOMAINS" ]; then
+    DOMAIN=$(echo $REPLIT_DOMAINS | cut -d ',' -f1)
+    export APP_URL="https://$DOMAIN"
+    echo "ℹ️ APP_URL not set, using Replit domain: $APP_URL"
+  else
+    echo "⚠️ Warning: Unable to determine APP_URL automatically"
+  fi
+else
+  echo "ℹ️ Using configured APP_URL: $APP_URL"
+fi
+
+# Set the known custom domain if not using automatic detection
+if [ -z "$CUSTOM_DOMAIN" ] && [ -z "$APP_URL" ]; then
+  export CUSTOM_DOMAIN="ai-companion-vishnupratapkum.replit.app"
+  export APP_URL="https://$CUSTOM_DOMAIN"
+  echo "ℹ️ Using known custom domain: $APP_URL"
 fi
 
 echo ""

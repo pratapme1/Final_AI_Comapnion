@@ -4,9 +4,9 @@ This guide provides step-by-step instructions for deploying Smart Ledger to Repl
 
 ## Current Replit Domain
 
-Your application is currently running on:
+Your application is using this custom Replit domain:
 ```
-https://8c4fe4f4-cebf-4df4-85b1-7c7234f20fbf-00-3his7rfbklzu8.kirk.replit.dev
+https://ai-companion-vishnupratapkum.replit.app
 ```
 
 Use this domain when configuring external services like Google OAuth.
@@ -33,11 +33,11 @@ Set these environment variables in Replit's Secrets tab:
 4. Add these URLs:
    - **Authorized JavaScript origins**: 
      ```
-     https://8c4fe4f4-cebf-4df4-85b1-7c7234f20fbf-00-3his7rfbklzu8.kirk.replit.dev
+     https://ai-companion-vishnupratapkum.replit.app
      ```
    - **Authorized redirect URIs**:
      ```
-     https://8c4fe4f4-cebf-4df4-85b1-7c7234f20fbf-00-3his7rfbklzu8.kirk.replit.dev/api/email/callback/gmail
+     https://ai-companion-vishnupratapkum.replit.app/api/email/callback/gmail
      ```
 5. Save and copy the Client ID and Client Secret
 

@@ -10,15 +10,15 @@ Use this checklist to ensure a successful deployment of Smart Ledger with full G
   - `https://www.googleapis.com/auth/gmail.readonly`
   - `https://www.googleapis.com/auth/userinfo.email`
 - [ ] Create OAuth credentials (Web application)
-- [ ] Add authorized JavaScript origins matching your production domain
-- [ ] Add authorized redirect URI: `https://your-domain.com/api/email/callback/gmail`
+- [ ] Add authorized JavaScript origins: `https://ai-companion-vishnupratapkum.replit.app`
+- [ ] Add authorized redirect URI: `https://ai-companion-vishnupratapkum.replit.app/api/email/callback/gmail`
 - [ ] Save Client ID and Client Secret for environment variables
 
 ## Environment Variables Setup
 
 - [ ] `NODE_ENV=production`
 - [ ] `PORT=5000` (or platform-specific port)
-- [ ] `APP_URL=https://your-domain.com` (must match OAuth settings)
+- [ ] `APP_URL=https://ai-companion-vishnupratapkum.replit.app` (must match OAuth settings)
 - [ ] `GOOGLE_CLIENT_ID=your_client_id`
 - [ ] `GOOGLE_CLIENT_SECRET=your_client_secret`
 - [ ] `DATABASE_URL=your_database_connection_string`
