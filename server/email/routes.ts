@@ -399,11 +399,13 @@ router.post('/demo/connect-gmail', requireAuth, async (req: Request, res: Respon
     // Create a simulated email provider record
     const [provider] = await db.insert(emailProviders).values({
       userId: userId,
-      provider: 'gmail',
+      providerType: 'gmail',
       email: email,
-      accessToken: 'demo_access_token',
-      refreshToken: 'demo_refresh_token',
-      expiresAt: new Date(now.getTime() + 3600 * 1000), // 1 hour from now
+      tokens: JSON.stringify({
+        access_token: 'demo_access_token',
+        refresh_token: 'demo_refresh_token',
+        expires_at: new Date(now.getTime() + 3600 * 1000).toISOString()
+      }),
       lastSyncAt: null,
       createdAt: now,
       updatedAt: now
@@ -411,15 +413,14 @@ router.post('/demo/connect-gmail', requireAuth, async (req: Request, res: Respon
     
     // Create a simulated success sync job for this provider
     await db.insert(emailSyncJobs).values({
-      userId: userId,
       providerId: provider.id,
       status: 'completed',
-      resultsCount: 5,
-      error: null,
       startedAt: now,
       completedAt: new Date(now.getTime() + 2000), // 2 seconds later
-      createdAt: now,
-      updatedAt: now
+      emailsFound: 20,
+      emailsProcessed: 20,
+      receiptsFound: 5,
+      errorMessage: null
     });
     
     res.status(200).json({ 
