@@ -28,10 +28,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
   
-  const httpServer = createServer(app);
-  
   // Register email routes
   app.use('/api/email', emailRouter);
+  
+  const httpServer = createServer(app);
   
   // Define API routes with /api prefix
   

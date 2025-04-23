@@ -1,42 +1,39 @@
-import { EmailProviderFactory, EmailProviderType, EmailProvider, EmailSyncJob } from './provider-factory';
-import { EmailReceiptExtractor } from './receipt-extractor';
 import { db } from '../db';
 import { emailProviders, emailSyncJobs } from '@shared/schema';
-import { eq, desc, and } from 'drizzle-orm';
+import { EmailProvider, EmailProviderFactory, EmailProviderType, EmailSyncJob } from './provider-factory';
+import { EmailReceiptExtractor } from './receipt-extractor';
+import { eq } from 'drizzle-orm';
 
 /**
- * Core service for email integration
+ * Service for managing email providers and receipt extraction
  */
 export class EmailService {
-  private receiptExtractor: EmailReceiptExtractor;
+  private extractor: EmailReceiptExtractor;
   
   constructor() {
-    this.receiptExtractor = new EmailReceiptExtractor();
+    this.extractor = new EmailReceiptExtractor();
   }
   
   /**
-   * Get authentication URL for connecting email provider
+   * Get authentication URL for a provider
    */
   getAuthUrl(userId: number, providerType: EmailProviderType): string {
     try {
-      // Get provider adapter
       const provider = EmailProviderFactory.getProvider(providerType);
-      
-      // Generate authentication URL
       return provider.getAuthUrl(userId);
     } catch (error) {
       console.error('Error generating auth URL:', error);
-      throw new Error(error instanceof Error ? error.message : 'Failed to generate authentication URL');
+      throw new Error('Failed to generate authentication URL');
     }
   }
   
   /**
-   * Handle OAuth callback
+   * Handle OAuth callback from provider
    */
   async handleCallback(code: string, state: string, providerType: EmailProviderType): Promise<EmailProvider> {
     try {
-      // Parse state parameter to get userId
-      const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+      // Decode state parameter to get userId
+      const stateData = JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
       const userId = stateData.userId;
       
       if (!userId) {
@@ -46,36 +43,28 @@ export class EmailService {
       // Get provider adapter
       const provider = EmailProviderFactory.getProvider(providerType);
       
-      // Exchange code for tokens and get user email
+      // Exchange code for tokens
       const { tokens, email } = await provider.handleCallback(code);
       
-      // Check if provider already exists for this user and email
-      const existingProviders = await db
+      // Check if this provider already exists for the user
+      const [existingProvider] = await db
         .select()
         .from(emailProviders)
-        .where(
-          and(
-            eq(emailProviders.userId, userId),
-            eq(emailProviders.email, email),
-            eq(emailProviders.providerType, providerType)
-          )
-        );
+        .where(eq(emailProviders.userId, userId))
+        .where(eq(emailProviders.email, email))
+        .where(eq(emailProviders.providerType, providerType));
       
-      let emailProvider;
+      let savedProvider;
       
-      if (existingProviders.length > 0) {
+      if (existingProvider) {
         // Update existing provider
-        const [updatedProvider] = await db
+        const [updated] = await db
           .update(emailProviders)
-          .set({
-            tokens: tokens,
-            lastSyncAt: null,
-            updatedAt: new Date()
-          })
-          .where(eq(emailProviders.id, existingProviders[0].id))
+          .set({ tokens })
+          .where(eq(emailProviders.id, existingProvider.id))
           .returning();
         
-        emailProvider = updatedProvider;
+        savedProvider = updated;
       } else {
         // Create new provider
         const [newProvider] = await db
@@ -85,18 +74,17 @@ export class EmailService {
             providerType,
             email,
             tokens,
-            createdAt: new Date(),
-            updatedAt: new Date()
+            createdAt: new Date()
           })
           .returning();
         
-        emailProvider = newProvider;
+        savedProvider = newProvider;
       }
       
-      return emailProvider;
+      return savedProvider as EmailProvider;
     } catch (error) {
       console.error('Error handling OAuth callback:', error);
-      throw new Error(error instanceof Error ? error.message : 'Failed to complete authentication');
+      throw new Error('Failed to complete authentication');
     }
   }
   
@@ -105,73 +93,72 @@ export class EmailService {
    */
   async getUserEmailProviders(userId: number): Promise<EmailProvider[]> {
     try {
+      // Get all providers for the user
       const providers = await db
         .select()
         .from(emailProviders)
-        .where(eq(emailProviders.userId, userId))
-        .orderBy(desc(emailProviders.createdAt));
+        .where(eq(emailProviders.userId, userId));
       
-      return providers.map(provider => ({
-        ...provider,
-        // Sensitive data should be redacted when sending to frontend
-        tokens: { connected: true }
-      }));
+      // Add connected status to each provider
+      return providers.map(provider => {
+        // Do not expose actual tokens in the response
+        return {
+          ...provider,
+          tokens: { connected: !!provider.tokens }
+        };
+      }) as EmailProvider[];
     } catch (error) {
-      console.error('Error fetching user email providers:', error);
-      throw new Error(error instanceof Error ? error.message : 'Failed to fetch email providers');
+      console.error('Error fetching email providers:', error);
+      throw new Error('Failed to fetch email providers');
     }
   }
   
   /**
-   * Get provider by ID
+   * Get a specific provider by ID
    */
-  async getProviderById(id: number): Promise<EmailProvider | undefined> {
+  async getProviderById(id: number): Promise<EmailProvider | null> {
     try {
       const [provider] = await db
         .select()
         .from(emailProviders)
         .where(eq(emailProviders.id, id));
       
-      return provider;
+      return provider as EmailProvider;
     } catch (error) {
       console.error('Error fetching email provider:', error);
-      throw new Error(error instanceof Error ? error.message : 'Failed to fetch email provider');
+      throw new Error('Failed to fetch email provider');
     }
   }
   
   /**
-   * Delete email provider
+   * Delete a provider
    */
-  async deleteProvider(id: number): Promise<void> {
+  async deleteProvider(id: number): Promise<boolean> {
     try {
-      // First delete all sync jobs
-      await db
-        .delete(emailSyncJobs)
-        .where(eq(emailSyncJobs.providerId, id));
-      
-      // Then delete the provider
-      await db
+      const result = await db
         .delete(emailProviders)
         .where(eq(emailProviders.id, id));
+      
+      return true;
     } catch (error) {
       console.error('Error deleting email provider:', error);
-      throw new Error(error instanceof Error ? error.message : 'Failed to delete email provider');
+      throw new Error('Failed to delete email provider');
     }
   }
   
   /**
-   * Start an email sync job
+   * Start syncing emails from a provider
    */
   async startSync(providerId: number): Promise<EmailSyncJob> {
     try {
-      // Get the provider
+      // Get provider
       const provider = await this.getProviderById(providerId);
       
       if (!provider) {
-        throw new Error('Email provider not found');
+        throw new Error('Provider not found');
       }
       
-      // Create a new sync job
+      // Create sync job
       const [syncJob] = await db
         .insert(emailSyncJobs)
         .values({
@@ -181,33 +168,30 @@ export class EmailService {
         })
         .returning();
       
-      // Start processing in the background
-      this.processSync(syncJob.id, provider).catch(error => {
-        console.error('Error processing sync job:', error);
-        this.updateSyncStatus(syncJob.id, 'failed', error instanceof Error ? error.message : 'Unknown error');
-      });
+      // Start sync process in background
+      this.runSyncProcess(provider, syncJob.id);
       
-      return syncJob;
+      return syncJob as EmailSyncJob;
     } catch (error) {
       console.error('Error starting email sync:', error);
-      throw new Error(error instanceof Error ? error.message : 'Failed to start email sync');
+      throw new Error('Failed to start email sync');
     }
   }
   
   /**
    * Get sync job by ID
    */
-  async getSyncJob(id: number): Promise<EmailSyncJob | undefined> {
+  async getSyncJob(id: number): Promise<EmailSyncJob | null> {
     try {
-      const [job] = await db
+      const [syncJob] = await db
         .select()
         .from(emailSyncJobs)
         .where(eq(emailSyncJobs.id, id));
       
-      return job;
+      return syncJob as EmailSyncJob;
     } catch (error) {
       console.error('Error fetching sync job:', error);
-      throw new Error(error instanceof Error ? error.message : 'Failed to fetch sync job');
+      throw new Error('Failed to fetch sync job');
     }
   }
   
@@ -216,153 +200,132 @@ export class EmailService {
    */
   async getProviderSyncJobs(providerId: number): Promise<EmailSyncJob[]> {
     try {
-      const jobs = await db
+      const syncJobs = await db
         .select()
         .from(emailSyncJobs)
         .where(eq(emailSyncJobs.providerId, providerId))
-        .orderBy(desc(emailSyncJobs.startedAt));
+        .orderBy(emailSyncJobs.startedAt, 'desc')
+        .limit(10);
       
-      return jobs;
+      return syncJobs as EmailSyncJob[];
     } catch (error) {
-      console.error('Error fetching provider sync jobs:', error);
-      throw new Error(error instanceof Error ? error.message : 'Failed to fetch sync jobs');
+      console.error('Error fetching sync jobs:', error);
+      throw new Error('Failed to fetch sync jobs');
     }
   }
   
   /**
-   * Update sync job status
+   * Process a single email to extract receipt data
    */
-  private async updateSyncStatus(
-    jobId: number,
-    status: 'pending' | 'processing' | 'completed' | 'failed',
-    errorMessage?: string,
-    stats?: {
-      emailsProcessed?: number;
-      emailsFound?: number;
-      receiptsFound?: number;
-    }
-  ): Promise<void> {
+  async processEmail(providerId: number, messageId: string): Promise<any> {
     try {
-      const updates: any = { status };
-      
-      if (status === 'completed' || status === 'failed') {
-        updates.completedAt = new Date();
-      }
-      
-      if (errorMessage) {
-        updates.errorMessage = errorMessage;
-      }
-      
-      if (stats) {
-        if (stats.emailsProcessed !== undefined) {
-          updates.emailsProcessed = stats.emailsProcessed;
-        }
-        if (stats.emailsFound !== undefined) {
-          updates.emailsFound = stats.emailsFound;
-        }
-        if (stats.receiptsFound !== undefined) {
-          updates.receiptsFound = stats.receiptsFound;
-        }
-      }
-      
-      await db
-        .update(emailSyncJobs)
-        .set(updates)
-        .where(eq(emailSyncJobs.id, jobId));
-    } catch (error) {
-      console.error('Error updating sync status:', error);
-    }
-  }
-  
-  /**
-   * Process sync job
-   */
-  private async processSync(jobId: number, provider: EmailProvider): Promise<void> {
-    try {
-      // Update job status to processing
-      await this.updateSyncStatus(jobId, 'processing');
-      
-      // Get provider adapter
-      const adapter = EmailProviderFactory.getAdapterForProvider(provider);
-      
-      // Refresh tokens if needed
-      const validTokens = await adapter.verifyTokens(provider.tokens);
-      
-      // Search for receipt emails
-      const emails = await adapter.searchEmails(validTokens);
-      
-      // Stats tracking
-      let emailsProcessed = 0;
-      let receiptsFound = 0;
-      
-      // Process each email
-      for (const email of emails) {
-        try {
-          emailsProcessed++;
-          
-          // Only process if message has an ID
-          if (!email.id) continue;
-          
-          // Extract receipt data
-          const result = await this.receiptExtractor.extractReceiptData(provider, email.id);
-          
-          // If it's a receipt, increment counter
-          if (result.isReceipt && result.receipt) {
-            receiptsFound++;
-          }
-          
-          // Update progress every 5 emails
-          if (emailsProcessed % 5 === 0) {
-            await this.updateSyncStatus(jobId, 'processing', undefined, {
-              emailsFound: emails.length,
-              emailsProcessed,
-              receiptsFound
-            });
-          }
-        } catch (err) {
-          // Log but continue processing other emails
-          console.error(`Error processing email ${email.id}:`, err);
-        }
-      }
-      
-      // Update provider's last sync time
-      await db
-        .update(emailProviders)
-        .set({
-          lastSyncAt: new Date(),
-          updatedAt: new Date()
-        })
-        .where(eq(emailProviders.id, provider.id));
-      
-      // Complete the job
-      await this.updateSyncStatus(jobId, 'completed', undefined, {
-        emailsFound: emails.length,
-        emailsProcessed,
-        receiptsFound
-      });
-    } catch (error) {
-      console.error('Error processing sync job:', error);
-      await this.updateSyncStatus(jobId, 'failed', error instanceof Error ? error.message : 'Unknown error');
-    }
-  }
-  
-  /**
-   * Process a single email
-   */
-  async processEmail(providerId: number, messageId: string) {
-    try {
-      // Get the provider
       const provider = await this.getProviderById(providerId);
       
       if (!provider) {
-        throw new Error('Email provider not found');
+        throw new Error('Provider not found');
       }
       
-      // Extract receipt data
-      return await this.receiptExtractor.extractReceiptData(provider, messageId);
+      // Verify and refresh tokens if needed
+      const adapter = EmailProviderFactory.getAdapterForProvider(provider);
+      provider.tokens = await adapter.verifyTokens(provider.tokens);
+      
+      // Process the email
+      const result = await this.extractor.extractReceiptData(provider, messageId);
+      
+      return result;
     } catch (error) {
       console.error('Error processing email:', error);
-      throw new Error(error instanceof Error ? error.message : 'Failed to process email');
+      throw new Error('Failed to process email');
     }
+  }
+  
+  /**
+   * Run sync process in background
+   */
+  private async runSyncProcess(provider: EmailProvider, syncJobId: number): Promise<void> {
+    // Run async without awaiting
+    (async () => {
+      try {
+        // Update job status to processing
+        await db
+          .update(emailSyncJobs)
+          .set({ status: 'processing' })
+          .where(eq(emailSyncJobs.id, syncJobId));
+        
+        // Get provider adapter
+        const adapter = EmailProviderFactory.getAdapterForProvider(provider);
+        
+        // Verify and refresh tokens if needed
+        provider.tokens = await adapter.verifyTokens(provider.tokens);
+        
+        // Search for potential receipt emails
+        const emails = await adapter.searchEmails(provider.tokens);
+        
+        // Update job with email count
+        await db
+          .update(emailSyncJobs)
+          .set({ 
+            emailsFound: emails.length 
+          })
+          .where(eq(emailSyncJobs.id, syncJobId));
+        
+        let processedCount = 0;
+        let receiptsFound = 0;
+        
+        // Process each email
+        for (const email of emails) {
+          try {
+            const result = await this.extractor.extractReceiptData(provider, email.id);
+            
+            processedCount++;
+            
+            if (result.isReceipt) {
+              receiptsFound++;
+            }
+            
+            // Update job progress
+            await db
+              .update(emailSyncJobs)
+              .set({ 
+                emailsProcessed: processedCount,
+                receiptsFound 
+              })
+              .where(eq(emailSyncJobs.id, syncJobId));
+          } catch (error) {
+            console.error('Error processing email:', email.id, error);
+            // Continue with next email
+          }
+        }
+        
+        // Update provider's last sync time
+        await db
+          .update(emailProviders)
+          .set({ lastSyncAt: new Date() })
+          .where(eq(emailProviders.id, provider.id));
+        
+        // Complete the job
+        await db
+          .update(emailSyncJobs)
+          .set({ 
+            status: 'completed',
+            completedAt: new Date(),
+            emailsProcessed: processedCount,
+            receiptsFound 
+          })
+          .where(eq(emailSyncJobs.id, syncJobId));
+      } catch (error) {
+        console.error('Error in sync process:', error);
+        
+        // Mark job as failed
+        await db
+          .update(emailSyncJobs)
+          .set({ 
+            status: 'failed',
+            completedAt: new Date(),
+            errorMessage: error instanceof Error ? error.message : 'Unknown error'
+          })
+          .where(eq(emailSyncJobs.id, syncJobId));
+      }
+    })();
   }
 }

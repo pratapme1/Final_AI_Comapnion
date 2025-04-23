@@ -1,7 +1,7 @@
 import { GmailProvider } from './providers/gmail';
 
 // Define supported email provider types
-export type EmailProviderType = 'gmail'; // Can be extended for other providers like 'outlook', etc.
+export type EmailProviderType = string; // Currently supports 'gmail', but can be extended for other providers
 
 // Email provider interface from database
 export interface EmailProvider {
