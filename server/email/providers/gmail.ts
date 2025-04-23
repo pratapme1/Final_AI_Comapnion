@@ -31,9 +31,22 @@ const createOAuth2Client = () => {
   }
   
   // Final fallback to localhost for development
-  const redirectUri = appUrl 
-    ? `${appUrl}/api/email/callback/gmail` 
-    : "http://localhost:5000/api/email/callback/gmail";
+  let redirectUri;
+  
+  // For production with custom domain
+  if (appUrl) {
+    redirectUri = `${appUrl}/api/email/callback/gmail`;
+  } 
+  // For local development
+  else {
+    redirectUri = "http://localhost:5000/api/email/callback/gmail";
+  }
+  
+  // Ensure the URI uses the correct protocol
+  if (redirectUri.includes('replit.app') && redirectUri.startsWith('http:')) {
+    redirectUri = redirectUri.replace('http:', 'https:');
+    console.log('Fixed protocol in redirect URI:', redirectUri);
+  }
     
   console.log(`OAuth redirect URI: ${redirectUri}`);
   
