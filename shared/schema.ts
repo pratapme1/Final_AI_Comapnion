@@ -18,6 +18,72 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
+// Email Provider model to store connections to email providers
+export const emailProviders = pgTable("email_providers", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  providerType: text("provider_type").notNull(), // 'gmail', 'outlook', etc.
+  email: text("email").notNull(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"),
+  tokenExpiry: timestamp("token_expiry"),
+  lastSync: timestamp("last_sync"),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const emailProvidersRelations = relations(emailProviders, ({ one }) => ({
+  user: one(users, {
+    fields: [emailProviders.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertEmailProviderSchema = createInsertSchema(emailProviders).pick({
+  userId: true,
+  providerType: true,
+  email: true,
+  accessToken: true,
+  refreshToken: true,
+  tokenExpiry: true,
+});
+
+export type InsertEmailProvider = z.infer<typeof insertEmailProviderSchema>;
+export type EmailProvider = typeof emailProviders.$inferSelect;
+
+// Email Sync Jobs model to track email scanning processes
+export const emailSyncJobs = pgTable("email_sync_jobs", {
+  id: serial("id").primaryKey(),
+  providerId: integer("provider_id").notNull().references(() => emailProviders.id, { onDelete: "cascade" }),
+  status: text("status").notNull(), // 'pending', 'processing', 'completed', 'failed'
+  startTime: timestamp("start_time"),
+  endTime: timestamp("end_time"),
+  totalEmails: integer("total_emails"),
+  processedEmails: integer("processed_emails"),
+  receiptsFound: integer("receipts_found"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const emailSyncJobsRelations = relations(emailSyncJobs, ({ one }) => ({
+  provider: one(emailProviders, {
+    fields: [emailSyncJobs.providerId],
+    references: [emailProviders.id],
+  }),
+}));
+
+export const insertEmailSyncJobSchema = createInsertSchema(emailSyncJobs).pick({
+  providerId: true,
+  status: true,
+  startTime: true,
+  totalEmails: true,
+});
+
+export type InsertEmailSyncJob = z.infer<typeof insertEmailSyncJobSchema>;
+export type EmailSyncJob = typeof emailSyncJobs.$inferSelect;
+
 // Category model
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
@@ -66,12 +132,20 @@ export const receipts = pgTable("receipts", {
   total: text("total").notNull(), // Using text for numeric to avoid type issues
   items: json("items").notNull().$type<ReceiptItem[]>(),
   category: text("category").default("Others"), // Add category field with default
+  source: text("source").default("manual"), // 'manual', 'email', 'scan'
+  sourceId: text("source_id"), // Email ID, filename, etc.
+  sourceProviderId: integer("source_provider_id").references(() => emailProviders.id),
+  confidenceScore: numeric("confidence_score"), // For AI-processed receipts
 });
 
 export const receiptsRelations = relations(receipts, ({ one }) => ({
   user: one(users, {
     fields: [receipts.userId],
     references: [users.id],
+  }),
+  emailProvider: one(emailProviders, {
+    fields: [receipts.sourceProviderId],
+    references: [emailProviders.id],
   }),
 }));
 
@@ -82,6 +156,10 @@ export const insertReceiptSchema = createInsertSchema(receipts).pick({
   total: true,
   items: true,
   category: true,
+  source: true,
+  sourceId: true,
+  sourceProviderId: true,
+  confidenceScore: true,
 });
 
 // Receipt Item type
@@ -165,4 +243,5 @@ export const usersRelations = relations(users, ({ many }) => ({
   budgets: many(budgets),
   receipts: many(receipts),
   insights: many(insights),
+  emailProviders: many(emailProviders),
 }));
