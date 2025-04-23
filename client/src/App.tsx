@@ -7,6 +7,7 @@ import Analytics from "./pages/Analytics";
 import Insights from "./pages/Insights";
 import NotFound from "./pages/not-found";
 import AuthPage from "./pages/auth-page";
+import OAuthCallbackPage from "./pages/OAuthCallbackPage";
 import Sidebar from "./components/layout/Sidebar";
 import MobileHeader from "./components/layout/MobileHeader";
 import { useState, useEffect, Suspense, lazy } from "react";
@@ -150,6 +151,9 @@ function Router() {
               <ProtectedRoute path="/receipts" component={Receipts} />
               <ProtectedRoute path="/analytics" component={Analytics} />
               <ProtectedRoute path="/insights" component={Insights} />
+              <Route path="/oauth/callback/gmail">
+                {() => <OAuthCallbackPage providerType="gmail" />}
+              </Route>
               <Route component={NotFound} />
             </Switch>
           </Suspense>
