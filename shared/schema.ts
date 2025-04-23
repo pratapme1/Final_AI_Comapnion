@@ -126,8 +126,7 @@ export const receipts = pgTable("receipts", {
   category: text("category").default("Others"), // Add category field with default
   source: text("source").default("manual"), // 'manual', 'email', 'scan'
   sourceId: text("source_id"), // Email ID, filename, etc.
-  sourceProviderId: integer("source_provider_id").references(() => emailProviders.id),
-  confidenceScore: numeric("confidence_score"), // For AI-processed receipts
+  sourceProviderId: integer("source_provider_id").references(() => emailProviders.id)
 });
 
 export const receiptsRelations = relations(receipts, ({ one }) => ({
@@ -151,7 +150,6 @@ export const insertReceiptSchema = createInsertSchema(receipts).pick({
   source: true,
   sourceId: true,
   sourceProviderId: true,
-  confidenceScore: true,
 });
 
 // Receipt Item type

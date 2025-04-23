@@ -112,8 +112,7 @@ export class EmailReceiptExtractor {
           category: receiptData.category || 'Others',
           source: 'email',
           sourceId: messageId,
-          sourceProviderId: provider.id,
-          confidenceScore: confidence
+          sourceProviderId: provider.id
         })
         .returning();
       
