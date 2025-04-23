@@ -92,14 +92,24 @@ router.get('/callback/:providerType', async (req: Request, res: Response) => {
     const { providerType } = req.params;
     const { code, state } = req.query;
     
+    // Log all information for debugging
+    console.log('OAuth callback received:');
+    console.log('Provider:', providerType);
+    console.log('Code present:', !!code);
+    console.log('State present:', !!state);
+    
     // Validate provider type and required parameters
     const result = providerTypeSchema.safeParse(providerType);
     if (!result.success) {
-      return res.status(400).json({ message: `Unsupported email provider: ${providerType}` });
+      console.error(`Unsupported email provider: ${providerType}`);
+      // Instead of returning an error, redirect to the frontend with an error param
+      return res.redirect(`/oauth-callback/${providerType}?error=unsupported_provider`);
     }
     
     if (!code || !state) {
-      return res.status(400).json({ message: 'Missing required parameters: code and state' });
+      console.error('Missing required parameters: code and/or state');
+      // Instead of returning an error, redirect to the frontend with an error param
+      return res.redirect(`/oauth-callback/${providerType}?error=missing_parameters`);
     }
     
     // Handle OAuth callback
@@ -109,19 +119,18 @@ router.get('/callback/:providerType', async (req: Request, res: Response) => {
       providerType as EmailProviderType
     );
     
-    // If user is already authenticated, redirect to email settings page
-    if (req.isAuthenticated()) {
-      return res.redirect('/settings/email');
-    }
-    
-    // Otherwise, redirect to auth page with success message
-    res.redirect('/auth?emailConnected=true');
+    // Redirect to the frontend callback handler with success
+    console.log('OAuth callback successful, redirecting to frontend');
+    return res.redirect(`/oauth-callback/${providerType}?success=true`);
   } catch (error) {
     console.error('Error handling OAuth callback:', error);
-    res.status(500).json({ 
-      message: 'Failed to complete authentication',
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    });
+    // Log detailed error information
+    if (error instanceof Error) {
+      console.error('Error details:', error.message, error.stack);
+    }
+    
+    // Redirect to the frontend with error information
+    return res.redirect(`/oauth-callback/${providerType}?error=${encodeURIComponent(error instanceof Error ? error.message : 'unknown_error')}`);
   }
 });
 
