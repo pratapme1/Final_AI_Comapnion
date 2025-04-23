@@ -122,11 +122,21 @@ export default function EmailSettings() {
             </TabsList>
             
             <TabsContent value="accounts" className="pt-4">
-              <EmailProvidersList />
+              <EmailProvidersList 
+                providers={providers}
+                isLoading={providersQuery.isLoading}
+                onSync={(providerId) => startSyncMutation.mutate(providerId)}
+                onDisconnect={(providerId) => disconnectMutation.mutate(providerId)}
+                isSyncing={isSyncing}
+              />
             </TabsContent>
             
             <TabsContent value="history" className="pt-4">
-              <SyncJobHistory />
+              <SyncJobHistory 
+                syncJobs={syncJobs}
+                isLoading={syncJobsQuery.isLoading}
+                providers={providers}
+              />
             </TabsContent>
           </Tabs>
         </CardContent>

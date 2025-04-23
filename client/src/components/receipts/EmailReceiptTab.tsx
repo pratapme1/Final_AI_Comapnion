@@ -101,8 +101,19 @@ const EmailReceiptTab = () => {
     },
   });
   
+  // Check if Gmail integration is configured
+  const isGmailConfigured = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  
   // Connect a new email provider (redirect to OAuth flow)
   const connectGmail = () => {
+    if (!isGmailConfigured) {
+      toast({
+        title: "Gmail integration not configured",
+        description: "The Gmail integration requires API credentials to be set up.",
+        variant: "destructive",
+      });
+      return;
+    }
     window.location.href = "/api/email/auth/gmail";
   };
 
