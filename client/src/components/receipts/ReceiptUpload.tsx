@@ -22,8 +22,10 @@ import {
   FileImage, 
   FilePlus, 
   Loader2, 
-  CheckCircle2
+  CheckCircle2,
+  Mail
 } from "lucide-react";
+import EmailReceiptTab from "./EmailReceiptTab";
 import { Progress } from "@/components/ui/progress";
 import { useReceiptData } from "@/hooks/use-receipt-data";
 import { Separator } from "@/components/ui/separator";
@@ -336,7 +338,7 @@ const ReceiptUpload = () => {
   return (
     <div className="max-w-4xl mx-auto">
       <Tabs defaultValue="ai-upload" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="ai-upload" className="flex items-center gap-2">
             <FileImage className="w-4 h-4" />
             Automatic AI Upload
@@ -345,7 +347,16 @@ const ReceiptUpload = () => {
             <FilePlus className="w-4 h-4" />
             Manual Entry
           </TabsTrigger>
+          <TabsTrigger value="email-receipts" className="flex items-center gap-2">
+            <Mail className="w-4 h-4" />
+            Email Receipts
+          </TabsTrigger>
         </TabsList>
+        
+        {/* Email Receipts Tab Content */}
+        <TabsContent value="email-receipts">
+          <EmailReceiptTab />
+        </TabsContent>
         
         {/* AI Upload Tab Content */}
         <TabsContent value="ai-upload">
