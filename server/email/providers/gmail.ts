@@ -10,14 +10,24 @@ const createOAuth2Client = () => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   
-  // For Replit environment, use the REPLIT_DOMAINS environment variable
+  // For Replit environment, use the configured domain
   let appUrl = process.env.APP_URL;
   
-  // If APP_URL is not set, check for Replit domain
-  if (!appUrl && process.env.REPLIT_DOMAINS) {
+  // Use custom domain if explicitly set
+  if (!appUrl && process.env.CUSTOM_DOMAIN) {
+    appUrl = `https://${process.env.CUSTOM_DOMAIN}`;
+  }
+  // If no custom domain, check for Replit domain
+  else if (!appUrl && process.env.REPLIT_DOMAINS) {
     // Use the first domain in the list (primary domain)
     const replitDomain = process.env.REPLIT_DOMAINS.split(',')[0];
     appUrl = `https://${replitDomain}`;
+  }
+  
+  // Hardcode the known custom domain as fallback if nothing else is available
+  if (!appUrl) {
+    appUrl = 'https://ai-companion-vishnupratapkum.replit.app';
+    console.log('Using hardcoded custom domain as fallback');
   }
   
   // Final fallback to localhost for development

@@ -21,9 +21,10 @@ Set these environment variables in Replit's Secrets tab:
 | `GOOGLE_CLIENT_ID` | Client ID from Google Cloud Console | Yes (for Gmail) |
 | `GOOGLE_CLIENT_SECRET` | Client Secret from Google Cloud Console | Yes (for Gmail) |
 | `SESSION_SECRET` | Random string for session encryption | Yes |
-| `APP_URL` | Your Replit domain with https:// prefix | No* |
+| `APP_URL` | Your Replit domain with https:// prefix (e.g., https://ai-companion-vishnupratapkum.replit.app) | Recommended |
+| `CUSTOM_DOMAIN` | Your custom domain name without protocol (e.g., ai-companion-vishnupratapkum.replit.app) | No |
 
-*`APP_URL` is optional as the application will automatically use the Replit domain if not set.
+The application has been updated to automatically detect your Replit domain. However, explicitly setting `APP_URL` or `CUSTOM_DOMAIN` can help ensure the correct OAuth redirect URIs are used.
 
 ## 2. Google OAuth Configuration
 
@@ -67,6 +68,8 @@ If the Gmail integration isn't working properly:
 2. **Verify the redirect URI** - The most common error is "redirect_uri_mismatch" which occurs when the URI in your request doesn't match the one registered in Google Cloud Console
 3. **Inspect redirect URLs in the browser** - When connecting Gmail, check if the URL is using HTTPS
 4. **Check server logs** - Look for "OAuth redirect URI" log messages to confirm the correct URI is being used
+5. **CORS errors** - If you see CORS errors in the browser console, the application has been updated to handle this by using client-side redirects instead of server-side redirects
+6. **Domain mismatch** - If the redirect URI uses a different domain than your custom domain, check that the `APP_URL` environment variable is correctly set
 
 ### Database Issues
 
