@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Mail, AlertCircle, RefreshCw, Plus, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, getQueryFn } from "@/lib/queryClient";
 import EmailProvidersList from "./EmailProvidersList";
 import SyncJobHistory from "./SyncJobHistory";
 
@@ -102,10 +102,23 @@ const EmailReceiptTab = () => {
   });
   
   // Check if Gmail integration is configured
-  const isGmailConfigured = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const configQuery = useQuery({
+    queryKey: ["/api/email/config-status"],
+    queryFn: getQueryFn(),
+  });
+  
+  const isGmailConfigured = configQuery.data?.providers?.gmail === true;
   
   // Connect a new email provider (redirect to OAuth flow)
   const connectGmail = () => {
+    if (configQuery.isLoading) {
+      toast({
+        title: "Please wait",
+        description: "Checking provider configuration...",
+      });
+      return;
+    }
+    
     if (!isGmailConfigured) {
       toast({
         title: "Gmail integration not configured",

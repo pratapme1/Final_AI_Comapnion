@@ -18,6 +18,27 @@ const requireAuth = (req: Request, res: Response, next: Function) => {
 const providerTypeSchema = z.enum(['gmail']);
 
 /**
+ * Check if email providers are configured
+ */
+router.get('/config-status', async (_req: Request, res: Response) => {
+  try {
+    // Check if needed environment variables are set
+    const googleConfigured = !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
+    
+    res.json({
+      providers: {
+        gmail: googleConfigured
+      }
+    });
+  } catch (error) {
+    console.error('Error checking provider configuration:', error);
+    res.status(500).json({ 
+      message: 'Failed to check provider configuration' 
+    });
+  }
+});
+
+/**
  * Get all email providers for authenticated user
  */
 router.get('/providers', requireAuth, async (req: Request, res: Response) => {
