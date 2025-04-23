@@ -9,7 +9,22 @@ const OAUTH_SCOPES = [
 const createOAuth2Client = () => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.APP_URL}/api/email/callback/gmail`;
+  
+  // Use current domain as redirect URI to work even in development
+  // Get base URL from environment or use current domain
+  let baseUrl = process.env.APP_URL;
+  if (!baseUrl) {
+    // If running in a web environment like Replit, use the current domain
+    baseUrl = 'https://' + (process.env.REPL_SLUG || 'localhost:5000');
+    
+    // If we're in development, use localhost
+    if (process.env.NODE_ENV === 'development' && !process.env.REPL_SLUG) {
+      baseUrl = 'http://localhost:5000';
+    }
+  }
+  
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${baseUrl}/api/email/callback/gmail`;
+  console.log(`OAuth redirect URI: ${redirectUri}`);
   
   if (!clientId || !clientSecret) {
     throw new Error('Missing required environment variables: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET');
