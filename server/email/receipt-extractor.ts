@@ -54,12 +54,12 @@ export class EmailReceiptExtractor {
       I need to determine if this email contains a receipt or order confirmation. 
       Here are the details:
       
-      Subject: ${email.subject}
-      From: ${email.from}
-      Snippet: ${email.snippet}
+      Subject: ${email.subject || 'No subject'}
+      From: ${email.from || 'Unknown sender'}
+      Snippet: ${email.snippet || 'No snippet available'}
       
       First 300 characters of content:
-      ${email.content.substring(0, 300)}...
+      ${(email.content || '').substring(0, 300)}...
       
       Respond with JSON in this format:
       {
@@ -77,11 +77,11 @@ export class EmailReceiptExtractor {
       });
 
       // Parse the response
-      const result = JSON.parse(response.choices[0].message.content);
+      const result = JSON.parse(response.choices[0].message.content || '{}');
       return {
-        isReceipt: result.isReceipt,
-        confidence: result.confidence,
-        reason: result.reason
+        isReceipt: result.isReceipt || false,
+        confidence: result.confidence || 0,
+        reason: result.reason || 'Unknown'
       };
     } catch (error) {
       console.error('Error classifying email:', error);
@@ -89,7 +89,7 @@ export class EmailReceiptExtractor {
       return {
         isReceipt: false,
         confidence: 0,
-        reason: `Error during classification: ${error.message}`
+        reason: `Error during classification: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
   }
@@ -103,12 +103,12 @@ export class EmailReceiptExtractor {
       const prompt = `
       Extract receipt information from this email. I need the following details in a structured format:
       
-      Email Subject: ${email.subject}
-      From: ${email.from}
-      Date: ${email.date}
+      Email Subject: ${email.subject || 'No subject'}
+      From: ${email.from || 'Unknown sender'}
+      Date: ${email.date || 'Unknown date'}
       
       Email Content:
-      ${email.content.substring(0, 3000)} ${email.content.length > 3000 ? '...(content truncated)' : ''}
+      ${(email.content || '').substring(0, 3000)} ${(email.content || '').length > 3000 ? '...(content truncated)' : ''}
       
       Extract and return the following information in JSON format:
       - merchantName: The store or company name
@@ -133,11 +133,12 @@ export class EmailReceiptExtractor {
       });
 
       // Parse the response
-      return JSON.parse(response.choices[0].message.content);
+      const content = response.choices[0].message.content || '{}';
+      return JSON.parse(content);
     } catch (error) {
       console.error('Error extracting receipt data:', error);
       return {
-        error: `Failed to extract receipt data: ${error.message}`,
+        error: `Failed to extract receipt data: ${error instanceof Error ? error.message : 'Unknown error'}`,
         merchantName: null,
         date: null,
         total: null,

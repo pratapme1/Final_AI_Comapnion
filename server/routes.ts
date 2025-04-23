@@ -6,6 +6,7 @@ import schedule from "node-schedule";
 import multer from 'multer';
 import { categorizeItems, generateInsight, generateSavingsSuggestion, detectRecurring, generateWeeklyDigest, processReceiptImage } from "./ai";
 import { setupAuth } from "./auth";
+import emailRouter from "./email/routes";
 
 // Configure multer
 const upload = multer({
@@ -28,6 +29,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
   
   const httpServer = createServer(app);
+  
+  // Register email routes
+  app.use('/api/email', emailRouter);
   
   // Define API routes with /api prefix
   
