@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { EmailService } from './email-service';
 import { EmailProviderType } from './provider-factory';
 import { z } from 'zod';
+import { db } from '../db';
+import { emailProviders, emailSyncJobs } from '@shared/schema';
 
 const router = Router();
 const emailService = new EmailService();
