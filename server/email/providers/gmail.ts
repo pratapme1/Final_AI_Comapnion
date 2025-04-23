@@ -10,11 +10,17 @@ const createOAuth2Client = () => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   
-  // Get the application URL from environment
-  const appUrl = process.env.APP_URL;
+  // For Replit environment, use the REPLIT_DOMAINS environment variable
+  let appUrl = process.env.APP_URL;
   
-  // Production environment should have APP_URL set
-  // This should be the full domain of your deployed application, e.g. https://example.com
+  // If APP_URL is not set, check for Replit domain
+  if (!appUrl && process.env.REPLIT_DOMAINS) {
+    // Use the first domain in the list (primary domain)
+    const replitDomain = process.env.REPLIT_DOMAINS.split(',')[0];
+    appUrl = `https://${replitDomain}`;
+  }
+  
+  // Final fallback to localhost for development
   const redirectUri = appUrl 
     ? `${appUrl}/api/email/callback/gmail` 
     : "http://localhost:5000/api/email/callback/gmail";

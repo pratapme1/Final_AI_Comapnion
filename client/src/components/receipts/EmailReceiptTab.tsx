@@ -171,8 +171,26 @@ const EmailReceiptTab = () => {
           description: "Redirecting to Google authentication...",
         });
         
-        // Redirect to Gmail auth endpoint
-        window.location.href = '/api/email/auth/gmail';
+        // Get the auth URL from the backend first to ensure proper configuration
+        const response = await fetch('/api/email/auth/gmail');
+        const data = await response.json();
+        
+        if (!data.authUrl) {
+          throw new Error('Failed to get authentication URL');
+        }
+        
+        console.log('Received auth URL:', data.authUrl);
+        
+        // If we're in Replit and the URL doesn't use https, fix it
+        let authUrl = data.authUrl;
+        if (window.location.hostname.includes('.replit.dev') && 
+            authUrl.startsWith('http:')) {
+          authUrl = authUrl.replace('http:', 'https:');
+          console.log('Fixed auth URL for Replit:', authUrl);
+        }
+        
+        // Redirect to the auth URL
+        window.location.href = authUrl;
       } catch (error) {
         console.error("Error initiating Gmail OAuth:", error);
         toast({
