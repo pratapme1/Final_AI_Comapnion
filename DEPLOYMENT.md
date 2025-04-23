@@ -54,6 +54,9 @@ git push -u origin main
      - `SESSION_SECRET`: A secure random string (e.g., `crypto.randomBytes(64).toString('hex')`)
      - `PORT`: 5000
      - `NODE_ENV`: production
+     - `APP_URL`: The URL of your deployed application (e.g., `https://<your-project-name>.railway.app`)
+     - `GOOGLE_CLIENT_ID`: Your Google OAuth client ID
+     - `GOOGLE_CLIENT_SECRET`: Your Google OAuth client secret
 
 5. **Configure build settings**
    - Go to "Settings"
@@ -111,6 +114,53 @@ After deployment:
    - Check logs in the Railway dashboard for any errors
    - Monitor application performance
 
+## Configuring Google OAuth for Gmail Integration
+
+To enable Gmail integration in your production environment, follow these steps:
+
+1. **Create a Google Cloud Platform Project**:
+   - Go to the [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select an existing one
+   - Enable the Gmail API and People API under "APIs & Services" > "Library"
+
+2. **Configure OAuth Consent Screen**:
+   - Go to "APIs & Services" > "OAuth consent screen"
+   - Select "External" as the user type (or "Internal" if using Google Workspace)
+   - Fill in the required app information:
+     - App name: "Smart Ledger"
+     - User support email: your email
+     - Developer contact information: your email
+   - Add the following scopes:
+     - `https://www.googleapis.com/auth/gmail.readonly` (for reading emails)
+     - `https://www.googleapis.com/auth/userinfo.email` (for user identification)
+   - Add test users if in testing mode
+
+3. **Create OAuth Credentials**:
+   - Go to "APIs & Services" > "Credentials"
+   - Click "Create Credentials" and select "OAuth client ID"
+   - Set application type to "Web application"
+   - Name your OAuth client (e.g., "Smart Ledger Gmail Integration")
+   - Add Authorized JavaScript Origins:
+     - Your Railway domain: `https://<your-project-name>.railway.app`
+   - Add Authorized Redirect URIs:
+     - `https://<your-project-name>.railway.app/api/email/callback/gmail`
+   - Click "Create" and note down the Client ID and Client Secret
+
+4. **Add OAuth Credentials to Environment Variables**:
+   - Add the following variables to your Railway project:
+     - `GOOGLE_CLIENT_ID`: Your OAuth client ID
+     - `GOOGLE_CLIENT_SECRET`: Your OAuth client secret
+     - `APP_URL`: Your Railway app URL (e.g., `https://<your-project-name>.railway.app`)
+
+5. **Test Gmail Integration**:
+   - Log in to your deployed application
+   - Navigate to "Upload Receipts" > "Email" tab
+   - Click "Connect Gmail Account"
+   - Complete the OAuth flow
+   - Verify that your Gmail account appears in the connected accounts list
+
+For more detailed information, refer to the [GMAIL_INTEGRATION.md](GMAIL_INTEGRATION.md) file.
+
 ## Troubleshooting
 
 ### CORS Issues
@@ -154,3 +204,25 @@ const sessionSettings: session.SessionOptions = {
   }
 };
 ```
+
+### Gmail OAuth Issues
+
+If you're experiencing issues with Gmail OAuth integration:
+
+1. **Redirect URI Mismatch**:
+   - The most common error is "redirect_uri_mismatch" which occurs when the URI in your request doesn't match the one registered in Google Cloud Console
+   - Ensure the `APP_URL` environment variable is set correctly and matches exactly your deployed application URL
+   - Check that the redirect URI in Google Cloud Console includes the exact path `/api/email/callback/gmail`
+
+2. **Invalid Token Errors**:
+   - If tokens are not refreshing properly, delete the provider and reconnect
+   - Check that both `access_token` and `refresh_token` are being stored correctly
+
+3. **Permission Errors**:
+   - Ensure you've enabled the Gmail API in Google Cloud Console
+   - Check that you've added the required scopes to your OAuth consent screen
+   - Verify that your OAuth app has been verified by Google if you're using it with external users
+
+4. **OAuth Verification**:
+   - For production, you may need to verify your app with Google to remove user limits
+   - The verification process requires additional documentation and may take several days to complete

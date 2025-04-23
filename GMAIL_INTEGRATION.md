@@ -174,6 +174,62 @@ Be aware of Gmail API quotas:
 - Each read request costs approximately 5-20 units
 - Monitor your usage in Google Cloud Console
 
+## Production Deployment Guide
+
+### Prerequisites
+
+Before deploying to production, ensure you have:
+
+1. A domain name with HTTPS set up (required for OAuth)
+2. Google OAuth credentials configured with the correct production redirect URIs
+3. Access to the necessary environment variables
+
+### Environment Variables Configuration
+
+The following environment variables must be set in your production environment:
+
+```
+APP_URL=https://your-production-domain.com
+GOOGLE_CLIENT_ID=your_production_client_id
+GOOGLE_CLIENT_SECRET=your_production_client_secret
+```
+
+### Deployment Steps
+
+1. **Update Google OAuth Configuration**:
+   - Go to the Google Cloud Console
+   - Update your OAuth consent screen with your production domain
+   - Add your production redirect URI: `https://your-production-domain.com/api/email/callback/gmail`
+   - Make sure to verify your domain if using external user type
+
+2. **Configure Your Deployment Platform**:
+   - For Docker/Docker Compose: Use the provided `.env` file with your production values
+   - For Railway: Add the environment variables in the Railway dashboard
+   - For other platforms: Add the variables according to their documentation
+
+3. **Test the OAuth Flow**:
+   - After deployment, test the Gmail connection flow
+   - Use a test account to verify that the OAuth process works correctly
+   - Check that tokens are stored correctly in the database
+
+### Common Production Issues
+
+1. **Redirect URI Mismatch**:
+   - Ensure the `APP_URL` environment variable is set correctly
+   - Verify that the redirect URI in Google Cloud Console matches exactly
+
+2. **HTTPS Issues**:
+   - OAuth requires HTTPS in production
+   - If using a reverse proxy, ensure it properly forwards HTTPS headers
+
+3. **Token Storage**:
+   - Check that tokens are being stored correctly in the database
+   - Verify refresh token workflows are functioning
+
+4. **Rate Limiting**:
+   - Be aware of Gmail API quotas in production
+   - Implement backoff strategies for high-volume usage
+
 ## Next Steps for Enhancement
 
 - Implement email attachment processing
