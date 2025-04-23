@@ -128,37 +128,59 @@ const EmailReceiptTab = () => {
       return;
     }
     
-    // For demo/development purposes, we'll simulate a successful connection
-    // This is a workaround for OAuth issues in the Replit environment
-    try {
-      toast({
-        title: "Connecting to Gmail",
-        description: "Please wait while we connect your account...",
-      });
-      
-      // Make a direct request to add a demo Gmail provider
-      const response = await apiRequest("POST", "/api/email/demo/connect-gmail", {
-        email: "user@gmail.com" // Demo email
-      });
-      
-      if (!response.ok) {
-        throw new Error("Failed to connect Gmail account");
+    // Check if we're in development mode
+    const isDevelopment = import.meta.env.MODE === 'development';
+    
+    if (isDevelopment) {
+      // For development purposes, we'll simulate a successful connection
+      try {
+        toast({
+          title: "Connecting to Gmail (Dev Mode)",
+          description: "Using development connection flow...",
+        });
+        
+        // Make a direct request to add a demo Gmail provider
+        const response = await apiRequest("POST", "/api/email/demo/connect-gmail", {
+          email: "user@gmail.com" // Demo email
+        });
+        
+        if (!response.ok) {
+          throw new Error("Failed to connect Gmail account");
+        }
+        
+        // Refresh providers list
+        queryClient.invalidateQueries({ queryKey: ["/api/email/providers"] });
+        
+        toast({
+          title: "Gmail connected",
+          description: "Your Gmail account has been connected successfully!",
+        });
+      } catch (error) {
+        console.error("Error connecting Gmail:", error);
+        toast({
+          title: "Connection failed",
+          description: error instanceof Error ? error.message : "Failed to connect Gmail account",
+          variant: "destructive",
+        });
       }
-      
-      // Refresh providers list
-      queryClient.invalidateQueries({ queryKey: ["/api/email/providers"] });
-      
-      toast({
-        title: "Gmail connected",
-        description: "Your Gmail account has been connected successfully!",
-      });
-    } catch (error) {
-      console.error("Error connecting Gmail:", error);
-      toast({
-        title: "Connection failed",
-        description: error instanceof Error ? error.message : "Failed to connect Gmail account",
-        variant: "destructive",
-      });
+    } else {
+      // In production, we'll redirect to the Gmail OAuth flow
+      try {
+        toast({
+          title: "Connecting to Gmail",
+          description: "Redirecting to Google authentication...",
+        });
+        
+        // Redirect to Gmail auth endpoint
+        window.location.href = '/api/email/auth/gmail';
+      } catch (error) {
+        console.error("Error initiating Gmail OAuth:", error);
+        toast({
+          title: "Connection failed",
+          description: error instanceof Error ? error.message : "Failed to initiate Gmail connection",
+          variant: "destructive",
+        });
+      }
     }
   };
 

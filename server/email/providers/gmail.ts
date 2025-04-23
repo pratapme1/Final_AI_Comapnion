@@ -10,9 +10,15 @@ const createOAuth2Client = () => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   
-  // For Replit environment, we need to use the domain where the app is hosted
-  // Use a hardcoded value that matches exactly what's configured in Google Console
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || "https://8c4fe4f4-cebf-4df4-85b1-7c7234f20fbf-00-3his7rfbklzu8.kirk.replit.dev/api/email/callback/gmail";
+  // Get the application URL from environment
+  const appUrl = process.env.APP_URL;
+  
+  // Production environment should have APP_URL set
+  // This should be the full domain of your deployed application, e.g. https://example.com
+  const redirectUri = appUrl 
+    ? `${appUrl}/api/email/callback/gmail` 
+    : "http://localhost:5000/api/email/callback/gmail";
+    
   console.log(`OAuth redirect URI: ${redirectUri}`);
   
   if (!clientId || !clientSecret) {
