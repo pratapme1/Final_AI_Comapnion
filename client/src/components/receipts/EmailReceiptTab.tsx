@@ -104,7 +104,7 @@ const EmailReceiptTab = () => {
   // Check if Gmail integration is configured
   const configQuery = useQuery({
     queryKey: ["/api/email/config-status"],
-    queryFn: getQueryFn(),
+    queryFn: getQueryFn({ on401: "returnNull" }),
   });
   
   const isGmailConfigured = configQuery.data?.providers?.gmail === true;
