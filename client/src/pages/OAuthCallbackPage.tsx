@@ -44,11 +44,12 @@ const OAuthCallbackPage = () => {
         setProgress(25);
         
         // Exchange the authorization code for tokens
-        const response = await fetch(`/api/email/callback/${provider}?code=${code}`, {
-          method: "GET",
+        const response = await fetch(`/api/email/process-callback/${provider}`, {
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
+          body: JSON.stringify({ code, state: queryParams.get("state") })
         });
         
         setProgress(75);

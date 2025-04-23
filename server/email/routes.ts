@@ -247,6 +247,65 @@ router.get('/sync/:id', requireAuth, async (req: Request, res: Response) => {
 });
 
 /**
+ * Process OAuth callback from front-end
+ */
+router.post('/process-callback/:providerType', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { providerType } = req.params;
+    const { code, state } = req.body;
+    
+    // Log all information for debugging
+    console.log('Processing OAuth callback:');
+    console.log('Provider:', providerType);
+    console.log('Code present:', !!code);
+    console.log('State present:', !!state);
+    
+    // Validate provider type and required parameters
+    const result = providerTypeSchema.safeParse(providerType);
+    if (!result.success) {
+      return res.status(400).json({ message: `Unsupported email provider: ${providerType}` });
+    }
+    
+    if (!code || !state) {
+      return res.status(400).json({ message: 'Missing required parameters: code and/or state' });
+    }
+    
+    // Get the user ID from the authenticated user
+    const userId = req.user!.id;
+    // Recreate the state parameter with the user ID
+    const newState = Buffer.from(JSON.stringify({ userId })).toString('base64');
+    
+    // Handle OAuth callback
+    const provider = await emailService.handleCallback(
+      code,
+      newState,
+      providerType as EmailProviderType
+    );
+    
+    // Return success response
+    res.status(200).json({ 
+      success: true,
+      provider: {
+        id: provider.id,
+        email: provider.email
+      }
+    });
+  } catch (error) {
+    console.error('Error processing OAuth callback:', error);
+    // Log detailed error information
+    if (error instanceof Error) {
+      console.error('Error details:', error.message, error.stack);
+    }
+    
+    // Return error response
+    res.status(500).json({ 
+      message: 'Failed to complete authentication',
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+});
+
+/**
  * Get sync jobs for a provider
  */
 router.get('/providers/:id/sync-jobs', requireAuth, async (req: Request, res: Response) => {
