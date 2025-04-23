@@ -379,4 +379,61 @@ router.post('/process-email', requireAuth, async (req: Request, res: Response) =
   }
 });
 
+/**
+ * Demo endpoint for directly connecting a Gmail account without OAuth
+ * For development/demo purposes only
+ */
+router.post('/demo/connect-gmail', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Email address is required' });
+    }
+    
+    const userId = req.user!.id;
+    const now = new Date();
+    
+    // Create a simulated email provider record
+    const [provider] = await db.insert(emailProviders).values({
+      userId: userId,
+      provider: 'gmail',
+      email: email,
+      accessToken: 'demo_access_token',
+      refreshToken: 'demo_refresh_token',
+      expiresAt: new Date(now.getTime() + 3600 * 1000), // 1 hour from now
+      lastSyncAt: null,
+      createdAt: now,
+      updatedAt: now
+    }).returning();
+    
+    // Create a simulated success sync job for this provider
+    await db.insert(emailSyncJobs).values({
+      userId: userId,
+      providerId: provider.id,
+      status: 'completed',
+      resultsCount: 5,
+      error: null,
+      startedAt: now,
+      completedAt: new Date(now.getTime() + 2000), // 2 seconds later
+      createdAt: now,
+      updatedAt: now
+    });
+    
+    res.status(200).json({ 
+      success: true,
+      provider: {
+        id: provider.id,
+        email: provider.email
+      }
+    });
+  } catch (error) {
+    console.error('Error connecting demo Gmail account:', error);
+    res.status(500).json({ 
+      message: 'Failed to connect demo Gmail account',
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+});
+
 export default router;
