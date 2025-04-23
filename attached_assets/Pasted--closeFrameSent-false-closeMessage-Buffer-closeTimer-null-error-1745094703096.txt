@@ -1,0 +1,95 @@
+    _closeFrameSent: false,
+
+    _closeMessage: <Buffer >,
+
+    _closeTimer: null,
+
+    _errorEmitted: true,
+
+    _extensions: {},
+
+    _paused: false,
+
+    _protocol: '',
+
+    _readyState: 3,
+
+    _receiver: null,
+
+    _sender: null,
+
+    _socket: null,
+
+    _bufferedAmount: 0,
+
+    _isServer: false,
+
+    _redirects: 0,
+
+    _autoPong: true,
+
+    _url: 'wss://postgres.railway.internal/v2',
+
+    _req: null,
+
+    [Symbol(shapeMode)]: false,
+
+    [Symbol(kCapture)]: false
+
+  },
+
+  [Symbol(kType)]: 'error',
+
+  [Symbol(kError)]: Error: connect ECONNREFUSED fd12:1ec0:93f9:0:1000:21:aa8d:c4a3:443
+
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1611:16) {
+
+    errno: -111,
+
+    code: 'ECONNREFUSED',
+
+    syscall: 'connect',
+
+    address: 'fd12:1ec0:93f9:0:1000:21:aa8d:c4a3',
+
+    port: 443
+
+  },
+
+  [Symbol(kMessage)]: 'connect ECONNREFUSED fd12:1ec0:93f9:0:1000:21:aa8d:c4a3:443'
+
+8:30:38 PM [express] GET /api/user 401 in 2ms
+
+8:30:38 PM [express] GET /api/stats/category-spending 401 in 2ms :: {"message":"Authentication requi…
+
+8:30:38 PM [express] GET /api/stats/budget-status 401 in 2ms :: {"message":"Authentication required"}
+
+8:30:38 PM [express] GET /api/receipts 401 in 4ms :: {"message":"Authentication required"}
+
+8:30:38 PM [express] GET /api/budgets 401 in 2ms :: {"message":"Authentication required"}
+
+8:30:38 PM [express] GET /api/categories 500 in 156ms :: {"message":"Failed to fetch categories"}
+
+8:30:41 PM [express] GET /api/budgets 401 in 1ms :: {"message":"Authentication required"}
+
+8:30:41 PM [express] GET /api/user 401 in 1ms
+
+8:30:41 PM [express] GET /api/stats/budget-status 401 in 0ms :: {"message":"Authentication required"}
+
+8:30:41 PM [express] GET /api/stats/category-spending 401 in 1ms :: {"message":"Authentication requi…
+
+8:30:41 PM [express] GET /api/receipts 401 in 0ms :: {"message":"Authentication required"}
+
+8:30:41 PM [express] GET /api/categories 500 in 178ms :: {"message":"Failed to fetch categories"}
+
+8:30:45 PM [express] GET /api/stats/category-spending 401 in 1ms :: {"message":"Authentication requi…
+
+8:30:45 PM [express] GET /api/stats/budget-status 401 in 1ms :: {"message":"Authentication required"}
+
+8:30:45 PM [express] GET /api/receipts 401 in 1ms :: {"message":"Authentication required"}
+
+8:30:45 PM [express] GET /api/budgets 401 in 0ms :: {"message":"Authentication required"}
+
+8:30:45 PM [express] GET /api/user 401 in 1ms
+
+8:30:46 PM [express] GET /api/categories 500 in 145ms :: {"message":"Failed to fetch categories"}

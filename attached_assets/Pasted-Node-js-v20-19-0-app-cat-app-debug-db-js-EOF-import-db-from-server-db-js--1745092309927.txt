@@ -1,0 +1,65 @@
+Node.js v20.19.0
+/app # cat > /app/debug-db.js << 'EOF'
+> import { db } from './server/db.js';
+> import * as schema from './shared/schema.js';
+> async function debugDatabase() {
+>   try {
+>     console.log("Testing database connection...");
+>     console.log("Database URL exists:", Boolean(process.env.DATABASE_URL));
+>
+>     // List all available exports from schema
+>     console.log("Available exports from schema:");
+>     console.log(Object.keys(schema));
+>
+>     // Try to query the tables
+>     try {
+>       // Try to get tables from the database
+>       console.log("\nAttempting to get database tables...");
+>       const result = await db.execute(`
+>         SELECT table_name
+>         FROM information_schema.tables
+>         WHERE table_schema = 'public'
+>       `);
+>       console.log("Tables in database:", result.rows.map(r => r.table_name));
+>
+>       // Try querying each table we find
+>       for (const row of result.rows) {
+>         const tableName = row.table_name;
+>         try {
+>           const tableData = await db.execute(`SELECT COUNT(*) FROM "${tableNam
+e}"`);
+>           console.log(`Table ${tableName} has ${tableData.rows[0].count} rows`
+);
+>         } catch (err) {
+>           console.log(`Error querying table ${tableName}:`, err.message);
+>         }
+>       }
+>     } catch (error) {
+>       console.error("Error getting tables:", error.message);
+>     }
+>
+>     // Try a simple query to test connection
+>     try {
+>       console.log("\nTesting simple query...");
+>       const result = await db.execute('SELECT NOW() as time');
+>       console.log("Database connection works! Current time:", result.rows[0].t
+ime);
+>     } catch (err) {
+>       console.error("Error running simple query:", err.message);
+>     }
+>   } catch (error) {
+>     console.error("General error:", error.message);
+>   }
+> }
+> debugDatabase();
+> EOF
+/app # node debug-db.js
+file:///app/shared/schema.js:15
+EOF
+^
+
+ReferenceError: EOF is not defined
+    at file:///app/shared/schema.js:15:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:263:25)
+    at async ModuleLoader.import (node:internal/modules/esm/loader:540:24)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)

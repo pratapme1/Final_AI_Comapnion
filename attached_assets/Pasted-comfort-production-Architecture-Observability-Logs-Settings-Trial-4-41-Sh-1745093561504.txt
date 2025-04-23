@@ -1,0 +1,227 @@
+comfort
+
+
+production
+Architecture
+Observability
+Logs
+Settings
+
+Trial
+
+|
+
+$ 4.41
+
+
+Share
+
+Date range
+15 minutes ago
+
+Filter
+Filter logs using "", (), AND, OR, -
+
+
+
+
+You reached the start of the range → Apr 20, 2025 1:16 AM
+
+8:03:37 PM [express] GET /api/categories 500 in 6ms :: {"message":"Failed to fetch categories"}
+
+Stopping Container
+
+Starting Container
+
+ 
+
+> rest-express@1.0.0 start
+
+> NODE_ENV=production node dist/index.js
+
+ 
+
+8:06:15 PM [express] serving on port 5000
+
+npm error path /app
+
+npm error signal SIGTERM
+
+npm error command sh -c NODE_ENV=production node dist/index.js
+
+npm error A complete log of this run can be found in: /root/.npm/_logs/2025-04-19T19_40_43_316Z-debug-0.log
+
+Stopping Container
+
+8:06:27 PM [express] GET /api/stats/budget-status 401 in 1ms :: {"message":"Authentication required"}
+
+8:06:28 PM [express] GET /api/categories 500 in 250ms :: {"message":"Failed to fetch categories"}
+
+8:06:28 PM [express] GET /api/stats/category-spending 401 in 1ms :: {"message":"Authentication requi…
+
+8:06:28 PM [express] GET /api/budgets 401 in 0ms :: {"message":"Authentication required"}
+
+8:06:28 PM [express] GET /api/stats/budget-status 401 in 1ms :: {"message":"Authentication required"}
+
+8:06:33 PM [express] GET /api/stats/category-spending 401 in 1ms :: {"message":"Authentication requi…
+
+8:06:33 PM [express] GET /api/budgets 401 in 1ms :: {"message":"Authentication required"}
+
+8:06:33 PM [express] GET /api/stats/budget-status 401 in 1ms :: {"message":"Authentication required"}
+
+8:06:38 PM [express] GET /api/receipts 401 in 0ms :: {"message":"Authentication required"}
+
+8:06:38 PM [express] GET /api/stats/budget-status 401 in 0ms :: {"message":"Authentication required"}
+
+8:06:38 PM [express] GET /api/stats/category-spending 401 in 1ms :: {"message":"Authentication requi…
+
+8:06:38 PM [express] GET /api/budgets 401 in 1ms :: {"message":"Authentication required"}
+
+8:06:43 PM [express] GET /api/stats/budget-status 401 in 2ms :: {"message":"Authentication required"}
+
+8:06:43 PM [express] GET /api/budgets 401 in 1ms :: {"message":"Authentication required"}
+
+8:06:43 PM [express] GET /api/stats/category-spending 401 in 1ms :: {"message":"Authentication requi…
+
+8:06:49 PM [express] GET /api/stats/budget-status 401 in 1ms :: {"message":"Authentication required"}
+
+8:06:49 PM [express] GET /api/budgets 401 in 1ms :: {"message":"Authentication required"}
+
+  [Symbol(kTarget)]: WebSocket {
+
+    _events: [Object: null prototype] {
+
+      close: [Function],
+
+      open: [Function]
+
+    _binaryType: 'arraybuffer',
+
+    _closeCode: 1006,
+
+    _closeFrameReceived: false,
+
+    _closeFrameSent: false,
+
+    _closeMessage: <Buffer >,
+
+    _closeTimer: null,
+
+    _extensions: {},
+
+    _protocol: '',
+
+    _receiver: null,
+
+    _socket: null,
+
+    _isServer: false,
+
+    _redirects: 0,
+
+    _autoPong: true,
+
+    _req: null,
+
+    [Symbol(shapeMode)]: false,
+
+    [Symbol(kCapture)]: false
+
+  [Symbol(kError)]: Error: connect ECONNREFUSED fd12:1ec0:93f9:0:1000:21:aa8d:c4a3:443
+
+    syscall: 'connect',
+
+    port: 443
+
+}
+
+Login error: ErrorEvent {
+
+  [Symbol(kTarget)]: WebSocket {
+
+    _events: [Object: null prototype] {
+
+      error: [Function],
+
+      message: [Function],
+
+      close: [Function],
+
+    _maxListeners: undefined,
+
+    _closeFrameReceived: false,
+
+    _closeFrameSent: false,
+
+    _closeMessage: <Buffer >,
+
+    _errorEmitted: true,
+
+    _paused: false,
+
+    _readyState: 3,
+
+    _receiver: null,
+
+    _socket: null,
+
+    _redirects: 0,
+
+    _url: 'wss://postgres.railway.internal/v2',
+
+    [Symbol(kCapture)]: false
+
+  },
+
+  [Symbol(kType)]: 'error',
+
+  [Symbol(kError)]: Error: connect ECONNREFUSED fd12:1ec0:93f9:0:1000:21:aa8d:c4a3:443
+
+    code: 'ECONNREFUSED',
+
+    address: 'fd12:1ec0:93f9:0:1000:21:aa8d:c4a3',
+
+    port: 443
+
+  [Symbol(kMessage)]: 'connect ECONNREFUSED fd12:1ec0:93f9:0:1000:21:aa8d:c4a3:443'
+
+8:06:49 PM [express] POST /api/login 500 in 152ms :: {"message":"Internal server error during login.…
+
+8:06:54 PM [express] GET /api/stats/budget-status 401 in 1ms :: {"message":"Authentication required"}
+
+8:06:54 PM [express] GET /api/budgets 401 in 0ms :: {"message":"Authentication required"}
+
+8:06:54 PM [express] GET /api/stats/category-spending 401 in 1ms :: {"message":"Authentication requi…
+
+8:07:06 PM [express] GET /api/user 401 in 1ms
+
+8:07:06 PM [express] GET /api/budgets 401 in 1ms :: {"message":"Authentication required"}
+
+8:07:06 PM [express] GET /api/stats/category-spending 401 in 1ms :: {"message":"Authentication requi…
+
+8:07:06 PM [express] GET /api/stats/budget-status 401 in 1ms :: {"message":"Authentication required"}
+
+8:07:06 PM [express] GET /api/receipts 401 in 1ms :: {"message":"Authentication required"}
+
+8:07:07 PM [express] GET /api/categories 500 in 165ms :: {"message":"Failed to fetch categories"}
+
+Starting Container
+
+> rest-express@1.0.0 start
+
+> NODE_ENV=production node dist/index.js
+
+8:11:01 PM [express] serving on port 5000
+
+Stopping Container
+
+npm error path /app
+
+npm error command failed
+
+npm error signal SIGTERM
+
+npm error command sh -c NODE_ENV=production node dist/index.js
+
+npm error A complete log of this run can be found in: /root/.npm/_logs/2025-04-19T20_06_14_180Z-debug-0.log
+

@@ -1,0 +1,113 @@
+/app # node debug-categories.js
+file:///app/debug-categories.js:2
+import { categories } from './shared/schema.js';
+         ^^^^^^^^^^
+SyntaxError: The requested module './shared/schema.js' does not provide an export named 'categories'
+    at ModuleJob._instantiate (node:internal/modules/esm/module_job:175:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:258:5)
+    at async ModuleLoader.import (node:internal/modules/esm/loader:540:24)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v20.19.0
+/app # # Create a script to initialize the database
+/app # cat > /app/init-database.js << 'EOF'
+> import { db } from './server/db.js';
+> import { categories, users } from './shared/schema.js';
+> import { scrypt, randomBytes } from 'crypto';
+> import { promisify } from 'util';
+>
+> const scryptAsync = promisify(scrypt);
+>
+> // Hash password function
+> async function hashPassword(password) {
+>   const salt = randomBytes(16).toString('hex');
+>   const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+>   return `${buf.toString('hex')}.${salt}`;
+> }
+>
+> async function initDatabase() {
+>   try {
+>     console.log("Initializing database...");
+>
+>     // Check if categories table exists
+>     try {
+>       const result = await db.select().from(categories).limit(1);
+>       console.log("Categories table exists and contains data");
+>     } catch (error) {
+>       console.log("Creating categories table and default categories...");
+>
+>       // Create default categories
+>       const defaultCategories = [
+>         { name: 'Groceries', color: '#4CAF50' },
+>         { name: 'Dining', color: '#FFC107' },
+>         { name: 'Transportation', color: '#2196F3' },
+>         { name: 'Entertainment', color: '#9C27B0' },
+>         { name: 'Shopping', color: '#E91E63' },
+>         { name: 'Housing', color: '#795548' },
+>         { name: 'Utilities', color: '#607D8B' },
+>         { name: 'Healthcare', color: '#FF5722' },
+>         { name: 'Personal', color: '#00BCD4' },
+>         { name: 'Education', color: '#3F51B5' },
+>         { name: 'Travel', color: '#8BC34A' },
+>         { name: 'Gifts', color: '#FFEB3B' },
+>         { name: 'Insurance', color: '#9E9E9E' },
+>         { name: 'Taxes', color: '#F44336' },
+>         { name: 'Miscellaneous', color: '#673AB7' }
+>       ];
+>
+>       try {
+>         const createTable = await db.insert(categories).values(defaultCategori
+es);
+>         console.log("Successfully created categories table and added default c
+ategories");
+>       } catch (err) {
+>         console.error("Error creating categories:", err.message);
+>       }
+>     }
+>
+>     // Check if users table exists and create a demo user if needed
+>     try {
+>       const usersResult = await db.select().from(users).limit(1);
+>       console.log("Users table exists and contains data");
+>     } catch (error) {
+>       console.log("Creating users table and demo user...");
+>
+>       try {
+>         // Create a demo user
+>         const hashedPassword = await hashPassword('password123');
+>         await db.insert(users).values({
+>           username: 'demo',
+>           password: hashedPassword,
+>           createdAt: new Date()
+>         });
+>         console.log("Successfully created users table and added demo user");
+>       } catch (err) {
+>         console.error("Error creating users:", err.message);
+>       }
+>     }
+>
+>     console.log("Database initialization completed");
+>   } catch (error) {
+>     console.error("Database initialization failed:", error.message);
+>     console.error("Full error:", error);
+>   }
+> }
+>
+> initDatabase();
+> EOF
+/app #
+/app # # Run the database initialization script
+/app # node init-database.js
+file:///app/init-database.js:11
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+                                                      ^^
+
+SyntaxError: Unexpected identifier 'as'
+    at compileSourceTextModule (node:internal/modules/esm/utils:340:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:146:18)
+    at #translate (node:internal/modules/esm/loader:431:12)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:478:27)
+    at async ModuleJob._link (node:internal/modules/esm/module_job:110:19)
+
+Node.js v20.19.0
+/app # 

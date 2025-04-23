@@ -1,0 +1,151 @@
+Starting Container
+
+ 
+
+> rest-express@1.0.0 start
+
+> NODE_ENV=production node dist/index.js
+
+ 
+
+5:56:02 PM [express] serving on port 5000
+
+5:56:02 PM [express] GET /api/receipts 401 in 20ms :: {"message":"Authentication required"}
+
+5:56:03 PM [express] GET /api/stats/budget-status 401 in 6ms :: {"message":"Authentication required"}
+
+5:56:03 PM [express] GET /api/budgets 401 in 3ms :: {"message":"Authentication required"}
+
+5:56:03 PM [express] GET /api/stats/category-spending 401 in 3ms :: {"message":"Authentication requi…
+
+5:56:08 PM [express] GET /api/stats/budget-status 401 in 3ms :: {"message":"Authentication required"}
+
+5:56:08 PM [express] GET /api/budgets 401 in 3ms :: {"message":"Authentication required"}
+
+5:56:08 PM [express] GET /api/stats/category-spending 401 in 2ms :: {"message":"Authentication requi…
+
+5:56:13 PM [express] GET /api/receipts 401 in 2ms :: {"message":"Authentication required"}
+
+5:56:13 PM [express] GET /api/stats/budget-status 401 in 3ms :: {"message":"Authentication required"}
+
+5:56:13 PM [express] GET /api/budgets 401 in 2ms :: {"message":"Authentication required"}
+
+5:56:13 PM [express] GET /api/stats/category-spending 401 in 2ms :: {"message":"Authentication requi…
+
+5:56:18 PM [express] GET /api/stats/budget-status 401 in 2ms :: {"message":"Authentication required"}
+
+5:56:18 PM [express] GET /api/budgets 401 in 2ms :: {"message":"Authentication required"}
+
+5:56:18 PM [express] GET /api/stats/category-spending 401 in 2ms :: {"message":"Authentication requi…
+
+5:56:23 PM [express] GET /api/receipts 401 in 2ms :: {"message":"Authentication required"}
+
+5:56:23 PM [express] GET /api/stats/budget-status 401 in 4ms :: {"message":"Authentication required"}
+
+5:56:23 PM [express] GET /api/budgets 401 in 3ms :: {"message":"Authentication required"}
+
+5:56:23 PM [express] GET /api/stats/category-spending 401 in 3ms :: {"message":"Authentication requi…
+
+5:56:29 PM [express] GET /api/budgets 401 in 2ms :: {"message":"Authentication required"}
+
+5:56:29 PM [express] GET /api/stats/budget-status 401 in 2ms :: {"message":"Authentication required"}
+
+5:56:29 PM [express] GET /api/stats/category-spending 401 in 1ms :: {"message":"Authentication requi…
+
+5:56:33 PM [express] GET /api/receipts 401 in 3ms :: {"message":"Authentication required"}
+
+5:56:34 PM [express] GET /api/stats/budget-status 401 in 2ms :: {"message":"Authentication required"}
+
+5:56:34 PM [express] GET /api/budgets 401 in 1ms :: {"message":"Authentication required"}
+
+5:56:34 PM [express] GET /api/stats/category-spending 401 in 2ms :: {"message":"Authentication requi…
+
+5:56:39 PM [express] GET /api/stats/category-spending 401 in 2ms :: {"message":"Authentication requi…
+
+5:56:39 PM [express] GET /api/stats/budget-status 401 in 1ms :: {"message":"Authentication required"}
+
+5:56:39 PM [express] GET /api/budgets 401 in 1ms :: {"message":"Authentication required"}
+
+5:56:43 PM [express] GET /api/receipts 401 in 1ms :: {"message":"Authentication required"}
+
+5:56:44 PM [express] GET /api/stats/category-spending 401 in 2ms :: {"message":"Authentication requi…
+
+5:56:44 PM [express] GET /api/stats/budget-status 401 in 1ms :: {"message":"Authentication required"}
+
+5:56:44 PM [express] GET /api/budgets 401 in 1ms :: {"message":"Authentication required"}
+
+5:56:49 PM [express] GET /api/budgets 401 in 3ms :: {"message":"Authentication required"}
+
+5:56:49 PM [express] GET /api/stats/category-spending 401 in 4ms :: {"message":"Authentication requi…
+
+5:56:49 PM [express] GET /api/stats/budget-status 401 in 3ms :: {"message":"Authentication required"}
+
+5:56:53 PM [express] GET /api/receipts 401 in 3ms :: {"message":"Authentication required"}
+
+5:56:54 PM [express] GET /api/stats/category-spending 401 in 3ms :: {"message":"Authentication requi…
+
+5:56:54 PM [express] GET /api/stats/budget-status 401 in 3ms :: {"message":"Authentication required"}
+
+5:56:55 PM [express] GET /api/budgets 401 in 3ms :: {"message":"Authentication required"}
+
+5:57:00 PM [express] GET /api/stats/category-spending 401 in 2ms :: {"message":"Authentication requi…
+
+5:57:00 PM [express] GET /api/stats/budget-status 401 in 3ms :: {"message":"Authentication required"}
+
+5:57:00 PM [express] GET /api/budgets 401 in 3ms :: {"message":"Authentication required"}
+
+5:57:03 PM [express] GET /api/receipts 401 in 2ms :: {"message":"Authentication required"}
+
+5:57:05 PM [express] GET /api/stats/category-spending 401 in 2ms :: {"message":"Authentication requi…
+
+5:57:05 PM [express] GET /api/stats/budget-status 401 in 2ms :: {"message":"Authentication required"}
+
+5:57:05 PM [express] GET /api/budgets 401 in 2ms :: {"message":"Authentication required"}
+
+5:57:10 PM [express] GET /api/stats/category-spending 401 in 1ms :: {"message":"Authentication requi…
+
+5:57:10 PM [express] GET /api/stats/budget-status 401 in 1ms :: {"message":"Authentication required"}
+
+5:57:10 PM [express] GET /api/budgets 401 in 1ms :: {"message":"Authentication required"}
+
+5:57:14 PM [express] GET /api/receipts 401 in 1ms :: {"message":"Authentication required"}
+
+5:57:15 PM [express] GET /api/stats/category-spending 401 in 2ms :: {"message":"Authentication requi…
+
+5:57:15 PM [express] GET /api/stats/budget-status 401 in 3ms :: {"message":"Authentication required"}
+
+5:57:15 PM [express] GET /api/budgets 401 in 2ms :: {"message":"Authentication required"}
+
+5:57:20 PM [express] GET /api/stats/category-spending 401 in 3ms :: {"message":"Authentication requi…
+
+5:57:20 PM [express] GET /api/stats/budget-status 401 in 2ms :: {"message":"Authentication required"}
+
+5:57:20 PM [express] GET /api/budgets 401 in 2ms :: {"message":"Authentication required"}
+
+5:57:24 PM [express] GET /api/receipts 401 in 2ms :: {"message":"Authentication required"}
+
+5:57:26 PM [express] GET /api/stats/budget-status 401 in 4ms :: {"message":"Authentication required"}
+
+5:57:26 PM [express] GET /api/stats/category-spending 401 in 2ms :: {"message":"Authentication requi…
+
+5:57:26 PM [express] GET /api/budgets 401 in 2ms :: {"message":"Authentication required"}
+
+5:57:31 PM [express] GET /api/stats/budget-status 401 in 1ms :: {"message":"Authentication required"}
+
+5:57:31 PM [express] GET /api/stats/category-spending 401 in 1ms :: {"message":"Authentication requi…
+
+5:57:31 PM [express] GET /api/budgets 401 in 1ms :: {"message":"Authentication required"}
+
+5:57:34 PM [express] GET /api/receipts 401 in 1ms :: {"message":"Authentication required"}
+
+5:57:36 PM [express] GET /api/stats/budget-status 401 in 2ms :: {"message":"Authentication required"}
+
+5:57:36 PM [express] GET /api/stats/category-spending 401 in 1ms :: {"message":"Authentication requi…
+
+5:57:36 PM [express] GET /api/budgets 401 in 2ms :: {"message":"Authentication required"}
+
+5:57:41 PM [express] GET /api/stats/category-spending 401 in 3ms :: {"message":"Authentication requi…
+
+5:57:41 PM [express] GET /api/stats/budget-status 401 in 2ms :: {"message":"Authentication required"}
+
+5:57:41 PM [express] GET /api/budgets 401 in 3ms :: {"message":"Authentication required"}
