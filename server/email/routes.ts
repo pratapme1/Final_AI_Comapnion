@@ -1,255 +1,291 @@
 import { Router, Request, Response } from 'express';
 import { EmailService } from './email-service';
 import { EmailProviderType } from './provider-factory';
-import { db } from '../db';
-import { receipts } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 
-// Create router
-const emailRouter = Router();
+const router = Router();
 const emailService = new EmailService();
 
-// Middleware to ensure user is authenticated
-const ensureAuthenticated = (req: Request, res: Response, next: any) => {
+// Helper function to ensure user is authenticated
+const requireAuth = (req: Request, res: Response, next: Function) => {
   if (!req.isAuthenticated()) {
-    return res.status(401).json({ message: "Authentication required" });
+    return res.status(401).json({ message: 'Authentication required' });
   }
   next();
 };
 
-// Route to initiate OAuth flow
-emailRouter.get('/connect/:provider', ensureAuthenticated, (req: Request, res: Response) => {
-  try {
-    const providerType = req.params.provider as EmailProviderType;
-    const userId = req.user?.id;
-    
-    if (!userId) {
-      return res.status(401).json({ message: "User ID not found" });
-    }
-    
-    const authUrl = emailService.getAuthUrl(userId, providerType);
-    res.json({ authUrl });
-  } catch (error) {
-    console.error('Error initiating email connection:', error);
-    res.status(500).json({ 
-      message: "Failed to initiate email connection", 
-      error: error.message 
-    });
-  }
-});
+// Zod schema for email provider type validation
+const providerTypeSchema = z.enum(['gmail']);
 
-// OAuth callback handler
-emailRouter.get('/callback/:provider', async (req: Request, res: Response) => {
+/**
+ * Get all email providers for authenticated user
+ */
+router.get('/providers', requireAuth, async (req: Request, res: Response) => {
   try {
-    const { code, state } = req.query;
-    const providerType = req.params.provider as EmailProviderType;
-    
-    if (!code || !state) {
-      return res.status(400).json({ message: "Missing required parameters" });
-    }
-    
-    const provider = await emailService.handleCallback(
-      code as string, 
-      state as string, 
-      providerType
-    );
-    
-    // Successful connection - redirect to the frontend email settings page
-    res.redirect('/receipts?emailConnected=true');
-  } catch (error) {
-    console.error('Error handling OAuth callback:', error);
-    res.status(500).json({ 
-      message: "Failed to complete email connection", 
-      error: error.message 
-    });
-  }
-});
-
-// Get all email providers for current user
-emailRouter.get('/providers', ensureAuthenticated, async (req: Request, res: Response) => {
-  try {
-    const userId = req.user?.id;
-    
-    if (!userId) {
-      return res.status(401).json({ message: "User ID not found" });
-    }
-    
+    const userId = req.user!.id;
     const providers = await emailService.getUserEmailProviders(userId);
+    
     res.json(providers);
   } catch (error) {
     console.error('Error fetching email providers:', error);
     res.status(500).json({ 
-      message: "Failed to fetch email providers", 
-      error: error.message 
+      message: 'Failed to fetch email providers',
+      error: error instanceof Error ? error.message : 'Unknown error' 
     });
   }
 });
 
-// Delete an email provider
-emailRouter.delete('/providers/:id', ensureAuthenticated, async (req: Request, res: Response) => {
+/**
+ * Get auth URL for connecting a new email provider
+ */
+router.get('/auth/:providerType', requireAuth, async (req: Request, res: Response) => {
   try {
-    const providerId = parseInt(req.params.id);
-    const userId = req.user?.id;
+    const { providerType } = req.params;
     
-    if (!userId) {
-      return res.status(401).json({ message: "User ID not found" });
+    // Validate provider type
+    const result = providerTypeSchema.safeParse(providerType);
+    if (!result.success) {
+      return res.status(400).json({ message: `Unsupported email provider: ${providerType}` });
     }
     
-    // Verify the provider belongs to the user
-    const providers = await emailService.getUserEmailProviders(userId);
-    const providerExists = providers.some(p => p.id === providerId);
+    const userId = req.user!.id;
+    const authUrl = emailService.getAuthUrl(userId, providerType as EmailProviderType);
     
-    if (!providerExists) {
-      return res.status(403).json({ message: "You don't have access to this provider" });
+    res.json({ authUrl });
+  } catch (error) {
+    console.error('Error generating auth URL:', error);
+    res.status(500).json({ 
+      message: 'Failed to generate authentication URL',
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+});
+
+/**
+ * OAuth callback handler
+ */
+router.get('/callback/:providerType', async (req: Request, res: Response) => {
+  try {
+    const { providerType } = req.params;
+    const { code, state } = req.query;
+    
+    // Validate provider type and required parameters
+    const result = providerTypeSchema.safeParse(providerType);
+    if (!result.success) {
+      return res.status(400).json({ message: `Unsupported email provider: ${providerType}` });
     }
     
+    if (!code || !state) {
+      return res.status(400).json({ message: 'Missing required parameters: code and state' });
+    }
+    
+    // Handle OAuth callback
+    const provider = await emailService.handleCallback(
+      code as string,
+      state as string,
+      providerType as EmailProviderType
+    );
+    
+    // If user is already authenticated, redirect to email settings page
+    if (req.isAuthenticated()) {
+      return res.redirect('/settings/email');
+    }
+    
+    // Otherwise, redirect to auth page with success message
+    res.redirect('/auth?emailConnected=true');
+  } catch (error) {
+    console.error('Error handling OAuth callback:', error);
+    res.status(500).json({ 
+      message: 'Failed to complete authentication',
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+});
+
+/**
+ * Delete an email provider
+ */
+router.delete('/providers/:id', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const providerId = parseInt(id, 10);
+    
+    if (isNaN(providerId)) {
+      return res.status(400).json({ message: 'Invalid provider ID' });
+    }
+    
+    // Get provider to check ownership
+    const provider = await emailService.getProviderById(providerId);
+    
+    if (!provider) {
+      return res.status(404).json({ message: 'Email provider not found' });
+    }
+    
+    // Ensure user owns this provider
+    if (provider.userId !== req.user!.id) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+    
+    // Delete provider
     await emailService.deleteProvider(providerId);
-    res.status(200).json({ message: "Provider deleted successfully" });
+    
+    res.status(200).json({ message: 'Email provider deleted successfully' });
   } catch (error) {
     console.error('Error deleting email provider:', error);
     res.status(500).json({ 
-      message: "Failed to delete email provider", 
-      error: error.message 
+      message: 'Failed to delete email provider',
+      error: error instanceof Error ? error.message : 'Unknown error' 
     });
   }
 });
 
-// Start email sync
-emailRouter.post('/sync/:providerId', ensureAuthenticated, async (req: Request, res: Response) => {
+/**
+ * Start email sync
+ */
+router.post('/providers/:id/sync', requireAuth, async (req: Request, res: Response) => {
   try {
-    const providerId = parseInt(req.params.providerId);
-    const userId = req.user?.id;
+    const { id } = req.params;
+    const providerId = parseInt(id, 10);
     
-    if (!userId) {
-      return res.status(401).json({ message: "User ID not found" });
+    if (isNaN(providerId)) {
+      return res.status(400).json({ message: 'Invalid provider ID' });
     }
     
-    // Verify the provider belongs to the user
-    const providers = await emailService.getUserEmailProviders(userId);
-    const providerExists = providers.some(p => p.id === providerId);
+    // Get provider to check ownership
+    const provider = await emailService.getProviderById(providerId);
     
-    if (!providerExists) {
-      return res.status(403).json({ message: "You don't have access to this provider" });
+    if (!provider) {
+      return res.status(404).json({ message: 'Email provider not found' });
     }
     
+    // Ensure user owns this provider
+    if (provider.userId !== req.user!.id) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+    
+    // Start sync job
     const syncJob = await emailService.startSync(providerId);
-    res.status(201).json(syncJob);
+    
+    res.status(200).json({ 
+      message: 'Email sync started successfully',
+      syncJob
+    });
   } catch (error) {
     console.error('Error starting email sync:', error);
     res.status(500).json({ 
-      message: "Failed to start email sync", 
-      error: error.message 
+      message: 'Failed to start email sync',
+      error: error instanceof Error ? error.message : 'Unknown error' 
     });
   }
 });
 
-// Get sync status
-emailRouter.get('/sync/:jobId', ensureAuthenticated, async (req: Request, res: Response) => {
+/**
+ * Get sync job status
+ */
+router.get('/sync/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const jobId = parseInt(req.params.jobId);
-    const syncJob = await emailService.getSyncJob(jobId);
+    const { id } = req.params;
+    const syncJobId = parseInt(id, 10);
+    
+    if (isNaN(syncJobId)) {
+      return res.status(400).json({ message: 'Invalid sync job ID' });
+    }
+    
+    const syncJob = await emailService.getSyncJob(syncJobId);
     
     if (!syncJob) {
-      return res.status(404).json({ message: "Sync job not found" });
+      return res.status(404).json({ message: 'Sync job not found' });
     }
     
-    res.json(syncJob);
+    // Get provider to check ownership
+    const provider = await emailService.getProviderById(syncJob.providerId);
+    
+    if (!provider || provider.userId !== req.user!.id) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+    
+    res.status(200).json(syncJob);
   } catch (error) {
-    console.error('Error fetching sync job:', error);
+    console.error('Error fetching sync job status:', error);
     res.status(500).json({ 
-      message: "Failed to get sync status", 
-      error: error.message 
+      message: 'Failed to fetch sync job status',
+      error: error instanceof Error ? error.message : 'Unknown error' 
     });
   }
 });
 
-// Process a single email
-emailRouter.post('/process-email', ensureAuthenticated, async (req: Request, res: Response) => {
+/**
+ * Get sync jobs for a provider
+ */
+router.get('/providers/:id/sync-jobs', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const providerId = parseInt(id, 10);
+    
+    if (isNaN(providerId)) {
+      return res.status(400).json({ message: 'Invalid provider ID' });
+    }
+    
+    // Get provider to check ownership
+    const provider = await emailService.getProviderById(providerId);
+    
+    if (!provider) {
+      return res.status(404).json({ message: 'Email provider not found' });
+    }
+    
+    // Ensure user owns this provider
+    if (provider.userId !== req.user!.id) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+    
+    // Get sync jobs
+    const syncJobs = await emailService.getProviderSyncJobs(providerId);
+    
+    res.status(200).json(syncJobs);
+  } catch (error) {
+    console.error('Error fetching sync jobs:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch sync jobs',
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+});
+
+/**
+ * Process a single email for receipt extraction (for testing or manual processing)
+ */
+router.post('/process-email', requireAuth, async (req: Request, res: Response) => {
   try {
     const { providerId, messageId } = req.body;
-    const userId = req.user?.id;
-    
-    if (!userId) {
-      return res.status(401).json({ message: "User ID not found" });
-    }
     
     if (!providerId || !messageId) {
-      return res.status(400).json({ message: "Missing required parameters" });
+      return res.status(400).json({ message: 'Missing required parameters: providerId and messageId' });
     }
     
-    // Verify the provider belongs to the user
-    const providers = await emailService.getUserEmailProviders(userId);
-    const providerExists = providers.some(p => p.id === providerId);
+    // Get provider to check ownership
+    const provider = await emailService.getProviderById(providerId);
     
-    if (!providerExists) {
-      return res.status(403).json({ message: "You don't have access to this provider" });
+    if (!provider) {
+      return res.status(404).json({ message: 'Email provider not found' });
     }
     
+    // Ensure user owns this provider
+    if (provider.userId !== req.user!.id) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+    
+    // Process email
     const result = await emailService.processEmail(providerId, messageId);
-    res.json(result);
+    
+    // Return extraction results
+    res.status(200).json(result);
   } catch (error) {
     console.error('Error processing email:', error);
     res.status(500).json({ 
-      message: "Failed to process email", 
-      error: error.message 
+      message: 'Failed to process email',
+      error: error instanceof Error ? error.message : 'Unknown error' 
     });
   }
 });
 
-// Save receipt from email
-emailRouter.post('/save-receipt', ensureAuthenticated, async (req: Request, res: Response) => {
-  try {
-    const { providerId, messageId, receiptData } = req.body;
-    const userId = req.user?.id;
-    
-    if (!userId) {
-      return res.status(401).json({ message: "User ID not found" });
-    }
-    
-    if (!providerId || !messageId || !receiptData) {
-      return res.status(400).json({ message: "Missing required parameters" });
-    }
-    
-    // Verify the provider belongs to the user
-    const providers = await emailService.getUserEmailProviders(userId);
-    const provider = providers.find(p => p.id === providerId);
-    
-    if (!provider) {
-      return res.status(403).json({ message: "You don't have access to this provider" });
-    }
-    
-    // Format receipt data
-    const receiptItems = receiptData.items.map(item => ({
-      name: item.name,
-      price: parseFloat(item.price),
-      category: item.category || 'Others'
-    }));
-    
-    // Insert receipt into database
-    const [receipt] = await db
-      .insert(receipts)
-      .values({
-        userId,
-        merchantName: receiptData.merchantName,
-        date: new Date(receiptData.date),
-        total: receiptData.total.toString(),
-        items: receiptItems,
-        category: receiptData.category || 'Others',
-        source: 'email',
-        sourceId: messageId,
-        sourceProviderId: providerId,
-        confidenceScore: receiptData.confidence || null
-      })
-      .returning();
-    
-    res.status(201).json(receipt);
-  } catch (error) {
-    console.error('Error saving receipt from email:', error);
-    res.status(500).json({ 
-      message: "Failed to save receipt", 
-      error: error.message 
-    });
-  }
-});
-
-export default emailRouter;
+export default router;

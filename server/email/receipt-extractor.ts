@@ -1,49 +1,69 @@
-import { EmailProvider } from '@shared/schema';
-import { EmailProviderFactory } from './provider-factory';
+import { EmailProvider, EmailProviderFactory } from './provider-factory';
 import OpenAI from 'openai';
+import { enhancedCurrencyDetection } from '../currencyDetection';
 
 // Initialize OpenAI client
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Email receipt extraction service
+/**
+ * Service to extract receipt data from emails
+ */
 export class EmailReceiptExtractor {
   /**
    * Extract receipt data from an email
    */
   async extractReceiptData(provider: EmailProvider, messageId: string) {
-    // Get adapter for email provider 
-    const adapter = EmailProviderFactory.getAdapterForProvider(provider);
-    
-    // Get email content
-    const email = await adapter.getEmailContent(provider, messageId);
-    
-    // First, determine if this is likely a receipt
-    const isReceipt = await this.isReceiptEmail(email);
-    if (!isReceipt.isReceipt) {
+    try {
+      // Get adapter for provider
+      const adapter = EmailProviderFactory.getAdapterForProvider(provider);
+      
+      // Refresh tokens if needed
+      const validTokens = await adapter.verifyTokens(provider.tokens);
+      
+      // Get message content
+      const email = await adapter.getMessage(validTokens, messageId);
+      
+      // Check if this is a receipt email
+      const { isReceipt, confidence, reason } = await this.isReceiptEmail(email);
+      
+      if (!isReceipt || confidence < 0.6) {
+        return {
+          isReceipt: false,
+          confidence,
+          reason,
+          message: 'Email does not appear to be a receipt'
+        };
+      }
+      
+      // Extract structured data
+      const receiptData = await this.extractStructuredData(email);
+      
+      // Apply enhanced currency detection
+      const enhancedData = enhancedCurrencyDetection(receiptData);
+      
+      return {
+        isReceipt: true,
+        confidence,
+        receipt: {
+          ...enhancedData,
+          sourceType: 'email',
+          sourceProvider: provider.providerType,
+          sourceMessageId: messageId,
+          emailFrom: email.from,
+          emailSubject: email.subject
+        }
+      };
+    } catch (error) {
+      console.error('Error extracting receipt data from email:', error);
       return {
         isReceipt: false,
-        confidence: isReceipt.confidence,
-        reason: isReceipt.reason
+        confidence: 0,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Failed to extract receipt data'
       };
     }
-    
-    // Use OpenAI to extract structured receipt data
-    const extractedData = await this.extractStructuredData(email);
-    
-    return {
-      isReceipt: true,
-      confidence: isReceipt.confidence,
-      receiptData: extractedData,
-      messageId,
-      emailData: {
-        subject: email.subject,
-        from: email.from,
-        date: email.date,
-        snippet: email.snippet
-      }
-    };
   }
-
+  
   /**
    * Determine if an email is a receipt
    */
@@ -77,7 +97,8 @@ export class EmailReceiptExtractor {
       });
 
       // Parse the response
-      const result = JSON.parse(response.choices[0].message.content || '{}');
+      const content = response.choices[0].message.content || '{}';
+      const result = JSON.parse(content);
       return {
         isReceipt: result.isReceipt || false,
         confidence: result.confidence || 0,

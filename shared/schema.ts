@@ -24,11 +24,8 @@ export const emailProviders = pgTable("email_providers", {
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   providerType: text("provider_type").notNull(), // 'gmail', 'outlook', etc.
   email: text("email").notNull(),
-  accessToken: text("access_token").notNull(),
-  refreshToken: text("refresh_token"),
-  tokenExpiry: timestamp("token_expiry"),
-  lastSync: timestamp("last_sync"),
-  active: boolean("active").default(true),
+  tokens: json("tokens").notNull(), // Store full OAuth tokens as JSON
+  lastSyncAt: timestamp("last_sync_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
@@ -44,9 +41,7 @@ export const insertEmailProviderSchema = createInsertSchema(emailProviders).pick
   userId: true,
   providerType: true,
   email: true,
-  accessToken: true,
-  refreshToken: true,
-  tokenExpiry: true,
+  tokens: true,
 });
 
 export type InsertEmailProvider = z.infer<typeof insertEmailProviderSchema>;
@@ -57,14 +52,12 @@ export const emailSyncJobs = pgTable("email_sync_jobs", {
   id: serial("id").primaryKey(),
   providerId: integer("provider_id").notNull().references(() => emailProviders.id, { onDelete: "cascade" }),
   status: text("status").notNull(), // 'pending', 'processing', 'completed', 'failed'
-  startTime: timestamp("start_time"),
-  endTime: timestamp("end_time"),
-  totalEmails: integer("total_emails"),
-  processedEmails: integer("processed_emails"),
+  startedAt: timestamp("started_at").notNull(),
+  completedAt: timestamp("completed_at"),
+  emailsFound: integer("emails_found"),
+  emailsProcessed: integer("emails_processed"),
   receiptsFound: integer("receipts_found"),
-  errorMessage: text("error_message"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
+  errorMessage: text("error_message")
 });
 
 export const emailSyncJobsRelations = relations(emailSyncJobs, ({ one }) => ({
@@ -77,8 +70,7 @@ export const emailSyncJobsRelations = relations(emailSyncJobs, ({ one }) => ({
 export const insertEmailSyncJobSchema = createInsertSchema(emailSyncJobs).pick({
   providerId: true,
   status: true,
-  startTime: true,
-  totalEmails: true,
+  startedAt: true,
 });
 
 export type InsertEmailSyncJob = z.infer<typeof insertEmailSyncJobSchema>;

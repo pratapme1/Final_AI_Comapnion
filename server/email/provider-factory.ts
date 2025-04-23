@@ -1,39 +1,65 @@
-import { GmailAdapter } from './providers/gmail';
-import { EmailProvider } from '@shared/schema';
+import { GmailProvider } from './providers/gmail';
 
-// Email provider types
-export type EmailProviderType = 'gmail' | 'outlook'; // Extendable for other providers
+// Define supported email provider types
+export type EmailProviderType = 'gmail'; // Can be extended for other providers like 'outlook', etc.
 
-// Email Provider Factory
+// Email provider interface from database
+export interface EmailProvider {
+  id: number;
+  userId: number;
+  providerType: EmailProviderType;
+  email: string;
+  tokens: any; // OAuth tokens
+  createdAt: Date;
+  lastSyncAt?: Date | null;
+}
+
+// Email sync job interface
+export interface EmailSyncJob {
+  id: number;
+  providerId: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  startedAt: Date;
+  completedAt?: Date | null;
+  errorMessage?: string | null;
+  emailsProcessed?: number;
+  emailsFound?: number;
+  receiptsFound?: number;
+}
+
+/**
+ * Factory class to get appropriate email provider adapters
+ */
 export class EmailProviderFactory {
+  // Map of provider types to provider classes
   private static providers: Record<string, any> = {
-    gmail: GmailAdapter,
+    gmail: GmailProvider
   };
-
+  
   /**
    * Get provider adapter instance
    */
   static getProvider(providerType: EmailProviderType): any {
-    const ProviderClass = EmailProviderFactory.providers[providerType];
+    const ProviderClass = this.providers[providerType];
     
     if (!ProviderClass) {
-      throw new Error(`Unsupported email provider: ${providerType}`);
+      throw new Error(`Unsupported email provider type: ${providerType}`);
     }
     
     return new ProviderClass();
   }
-
+  
   /**
    * Get adapter for existing provider
    */
   static getAdapterForProvider(provider: EmailProvider): any {
-    return EmailProviderFactory.getProvider(provider.providerType as EmailProviderType);
+    return this.getProvider(provider.providerType);
   }
-
+  
   /**
    * Register new provider type
    */
   static registerProvider(type: string, providerClass: any): void {
-    EmailProviderFactory.providers[type] = providerClass;
+    this.providers[type] = providerClass;
   }
 }
