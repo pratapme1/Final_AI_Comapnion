@@ -589,9 +589,7 @@ router.post('/demo/connect-gmail', requireAuth, async (req: Request, res: Respon
     console.log('User ID for demo connection:', userId);
     const now = new Date();
     
-    // Import db here to avoid possible circular imports
-    const { db } = require('../db');
-    
+    // Use imported db directly from top of file
     console.log('Creating simulated email provider...');
     // Create a simulated email provider record
     const [provider] = await db.insert(emailProviders).values({
