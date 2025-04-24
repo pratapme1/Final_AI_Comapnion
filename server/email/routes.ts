@@ -618,7 +618,8 @@ router.post('/demo/connect-gmail', requireAuth, async (req: Request, res: Respon
       emailsFound: 20,
       emailsProcessed: 20,
       receiptsFound: 5,
-      errorMessage: null
+      errorMessage: null,
+      shouldCancel: false
     });
     
     console.log('Demo Gmail connection complete');
