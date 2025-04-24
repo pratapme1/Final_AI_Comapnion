@@ -101,31 +101,100 @@ router.get('/callback/:providerType', async (req: Request, res: Response) => {
     console.log('Provider:', providerType);
     console.log('Code present:', !!code);
     console.log('State present:', !!state);
+    console.log('Full URL:', req.protocol + '://' + req.get('host') + req.originalUrl);
+    console.log('Auth status:', req.isAuthenticated() ? 'Authenticated' : 'Not authenticated');
+    console.log('User ID:', req.user?.id || 'No user');
     
     // Validate provider type and required parameters
     const result = providerTypeSchema.safeParse(providerType);
     if (!result.success) {
       console.error(`Unsupported email provider: ${providerType}`);
-      // Instead of returning an error, redirect to the frontend with an error param
-      return res.redirect(`/oauth-callback/${providerType}?error=unsupported_provider`);
+      // Return HTML that will redirect via JavaScript
+      return res.send(`
+        <html>
+          <head>
+            <title>Redirecting...</title>
+            <script>
+              window.location.href = '/oauth-callback/${providerType}?error=unsupported_provider';
+            </script>
+          </head>
+          <body>
+            <p>Redirecting to app... If you are not redirected, <a href="/oauth-callback/${providerType}?error=unsupported_provider">click here</a>.</p>
+          </body>
+        </html>
+      `);
     }
     
     if (!code || !state) {
       console.error('Missing required parameters: code and/or state');
-      // Instead of returning an error, redirect to the frontend with an error param
-      return res.redirect(`/oauth-callback/${providerType}?error=missing_parameters`);
+      // Return HTML that will redirect via JavaScript
+      return res.send(`
+        <html>
+          <head>
+            <title>Redirecting...</title>
+            <script>
+              window.location.href = '/oauth-callback/${providerType}?error=missing_parameters';
+            </script>
+          </head>
+          <body>
+            <p>Redirecting to app... If you are not redirected, <a href="/oauth-callback/${providerType}?error=missing_parameters">click here</a>.</p>
+          </body>
+        </html>
+      `);
     }
     
-    // Handle OAuth callback
-    const provider = await emailService.handleCallback(
-      code as string,
-      state as string,
-      providerType as EmailProviderType
-    );
-    
-    // Redirect to the frontend callback handler with success
-    console.log('OAuth callback successful, redirecting to frontend');
-    return res.redirect(`/oauth-callback/${providerType}?success=true`);
+    try {
+      // Extract the user ID from the state
+      const decodedState = JSON.parse(Buffer.from(state as string, 'base64').toString());
+      const userId = decodedState.userId;
+      console.log('Extracted user ID from state:', userId);
+      
+      // Handle OAuth callback
+      const provider = await emailService.handleCallback(
+        code as string,
+        state as string,
+        providerType as EmailProviderType
+      );
+      
+      console.log('OAuth callback successful, provider data:', JSON.stringify({
+        id: provider.id,
+        email: provider.email,
+        providerType: provider.providerType
+      }));
+      
+      // Return HTML that will redirect via JavaScript with success
+      return res.send(`
+        <html>
+          <head>
+            <title>Redirecting...</title>
+            <script>
+              window.location.href = '/oauth-callback/${providerType}?success=true&providerId=${provider.id}';
+            </script>
+          </head>
+          <body>
+            <p>Redirecting to app... If you are not redirected, <a href="/oauth-callback/${providerType}?success=true&providerId=${provider.id}">click here</a>.</p>
+          </body>
+        </html>
+      `);
+    } catch (processingError) {
+      console.error('Error processing OAuth callback:', processingError);
+      
+      // Return HTML that will redirect via JavaScript with error details
+      const errorMessage = processingError instanceof Error ? processingError.message : 'unknown_error';
+      return res.send(`
+        <html>
+          <head>
+            <title>Redirecting...</title>
+            <script>
+              window.location.href = '/oauth-callback/${providerType}?error=${encodeURIComponent(errorMessage)}';
+            </script>
+          </head>
+          <body>
+            <p>Redirecting to app... If you are not redirected, <a href="/oauth-callback/${providerType}?error=${encodeURIComponent(errorMessage)}">click here</a>.</p>
+          </body>
+        </html>
+      `);
+    }
   } catch (error) {
     console.error('Error handling OAuth callback:', error);
     // Log detailed error information
@@ -133,8 +202,20 @@ router.get('/callback/:providerType', async (req: Request, res: Response) => {
       console.error('Error details:', error.message, error.stack);
     }
     
-    // Redirect to the frontend with error information
-    return res.redirect(`/oauth-callback/${providerType}?error=${encodeURIComponent(error instanceof Error ? error.message : 'unknown_error')}`);
+    // Return HTML that will redirect via JavaScript with general error
+    return res.send(`
+      <html>
+        <head>
+          <title>Redirecting...</title>
+          <script>
+            window.location.href = '/oauth-callback/${req.params.providerType || 'unknown'}?error=${encodeURIComponent(error instanceof Error ? error.message : 'unknown_error')}';
+          </script>
+        </head>
+        <body>
+          <p>Redirecting to app... If you are not redirected, <a href="/oauth-callback/${req.params.providerType || 'unknown'}?error=${encodeURIComponent(error instanceof Error ? error.message : 'unknown_error')}">click here</a>.</p>
+        </body>
+      </html>
+    `);
   }
 });
 

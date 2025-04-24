@@ -32,59 +32,108 @@ export class EmailService {
    */
   async handleCallback(code: string, state: string, providerType: EmailProviderType): Promise<EmailProvider> {
     try {
-      // Decode state parameter to get userId
-      const stateData = JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
-      const userId = stateData.userId;
+      console.log('Starting handleCallback with:', { 
+        hasCode: !!code, 
+        codeLength: code ? code.length : 0,
+        hasState: !!state, 
+        stateLength: state ? state.length : 0,
+        providerType
+      });
       
-      if (!userId) {
-        throw new Error('Invalid state parameter');
+      // Decode state parameter to get userId
+      let userId;
+      try {
+        const stateData = JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
+        userId = stateData.userId;
+        console.log('Decoded state data:', { userId });
+        
+        if (!userId) {
+          throw new Error('No userId found in state data');
+        }
+      } catch (stateError) {
+        console.error('Error decoding state:', stateError);
+        throw new Error(`Invalid state parameter: ${stateError.message}`);
       }
       
       // Get provider adapter
+      console.log('Getting provider adapter for type:', providerType);
       const provider = EmailProviderFactory.getProvider(providerType);
       
       // Exchange code for tokens
+      console.log('Exchanging auth code for tokens...');
       const { tokens, email } = await provider.handleCallback(code);
+      console.log('Got tokens and email:', { hasTokens: !!tokens, email });
+      
+      if (!tokens) {
+        throw new Error('No tokens received from provider');
+      }
+      
+      if (!email) {
+        throw new Error('No email address received from provider');
+      }
+      
+      // Prepare tokens for storage (could be string or object)
+      const tokensForStorage = typeof tokens === 'string' ? tokens : JSON.stringify(tokens);
+      console.log('Prepared tokens for storage');
       
       // Check if this provider already exists for the user
-      const [existingProvider] = await db
+      console.log('Checking for existing provider for:', { userId, email, providerType });
+      
+      const existingProviders = await db
         .select()
         .from(emailProviders)
         .where(eq(emailProviders.userId, userId))
         .where(eq(emailProviders.email, email))
         .where(eq(emailProviders.providerType, providerType));
       
-      let savedProvider;
+      console.log('Found existing providers:', existingProviders.length);
       
-      if (existingProvider) {
+      let savedProvider;
+      const now = new Date();
+      
+      if (existingProviders.length > 0) {
         // Update existing provider
+        console.log('Updating existing provider ID:', existingProviders[0].id);
         const [updated] = await db
           .update(emailProviders)
-          .set({ tokens })
-          .where(eq(emailProviders.id, existingProvider.id))
+          .set({ 
+            tokens: tokensForStorage,
+            updatedAt: now
+          })
+          .where(eq(emailProviders.id, existingProviders[0].id))
           .returning();
         
         savedProvider = updated;
+        console.log('Updated provider successfully');
       } else {
         // Create new provider
+        console.log('Creating new provider');
         const [newProvider] = await db
           .insert(emailProviders)
           .values({
             userId,
             providerType,
             email,
-            tokens,
-            createdAt: new Date()
+            tokens: tokensForStorage,
+            createdAt: now,
+            updatedAt: now
           })
           .returning();
         
         savedProvider = newProvider;
+        console.log('Created new provider ID:', newProvider.id);
       }
       
+      console.log('Completed OAuth successfully for provider ID:', savedProvider.id);
       return savedProvider as EmailProvider;
     } catch (error) {
       console.error('Error handling OAuth callback:', error);
-      throw new Error('Failed to complete authentication');
+      // Add more context to the error for easier debugging
+      if (error instanceof Error) {
+        throw new Error(`Authentication failed: ${error.message}`);
+      } else {
+        throw new Error('Failed to complete authentication: Unknown error');
+      }
     }
   }
   
