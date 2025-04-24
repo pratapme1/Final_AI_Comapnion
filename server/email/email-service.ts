@@ -2,7 +2,7 @@ import { db } from '../db';
 import { emailProviders, emailSyncJobs } from '@shared/schema';
 import { EmailProvider, EmailProviderFactory, EmailProviderType, EmailSyncJob } from './provider-factory';
 import { EmailReceiptExtractor } from './receipt-extractor';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 /**
  * Service for managing email providers and receipt extraction
@@ -50,9 +50,15 @@ export class EmailService {
         if (!userId) {
           throw new Error('No userId found in state data');
         }
-      } catch (stateError) {
-        console.error('Error decoding state:', stateError);
-        throw new Error(`Invalid state parameter: ${stateError.message}`);
+      } catch (error) {
+        console.error('Error decoding state:', error);
+        
+        // Handle the error based on its type
+        if (error instanceof Error) {
+          throw new Error(`Invalid state parameter: ${error.message}`);
+        } else {
+          throw new Error('Invalid state parameter: Unknown error');
+        }
       }
       
       // Get provider adapter

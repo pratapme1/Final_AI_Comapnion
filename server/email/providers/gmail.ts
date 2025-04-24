@@ -10,50 +10,65 @@ const createOAuth2Client = () => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   
-  // For Replit environment, use the configured domain
-  let appUrl = process.env.APP_URL;
+  if (!clientId || !clientSecret) {
+    throw new Error('Missing required environment variables: GOOGLE_CLIENT_ID and/or GOOGLE_CLIENT_SECRET');
+  }
   
-  // Use custom domain if explicitly set
-  if (!appUrl && process.env.CUSTOM_DOMAIN) {
+  console.log('Creating OAuth2 client with credentials...');
+  
+  // For Replit environment, determine the domain in multiple ways
+  let appUrl = '';
+  
+  // Priority 1: Explicitly configured APP_URL
+  if (process.env.APP_URL) {
+    console.log('Using configured APP_URL:', process.env.APP_URL);
+    appUrl = process.env.APP_URL;
+  }
+  // Priority 2: Configured custom domain
+  else if (process.env.CUSTOM_DOMAIN) {
+    console.log('Using CUSTOM_DOMAIN:', process.env.CUSTOM_DOMAIN);
     appUrl = `https://${process.env.CUSTOM_DOMAIN}`;
   }
-  // If no custom domain, check for Replit domain
-  else if (!appUrl && process.env.REPLIT_DOMAINS) {
+  // Priority 3: Replit domains from environment
+  else if (process.env.REPLIT_DOMAINS) {
     // Use the first domain in the list (primary domain)
-    const replitDomain = process.env.REPLIT_DOMAINS.split(',')[0];
-    appUrl = `https://${replitDomain}`;
+    const replitDomains = process.env.REPLIT_DOMAINS.split(',');
+    const primaryDomain = replitDomains[0]?.trim();
+    
+    if (primaryDomain) {
+      console.log('Using primary REPLIT_DOMAIN:', primaryDomain);
+      appUrl = `https://${primaryDomain}`;
+    }
   }
   
-  // Hardcode the known custom domain as fallback if nothing else is available
+  // Priority 4: Hardcoded Replit domain as last resort
   if (!appUrl) {
     appUrl = 'https://ai-companion-vishnupratapkum.replit.app';
-    console.log('Using hardcoded custom domain as fallback');
+    console.log('Using hardcoded domain as last resort:', appUrl);
   }
   
-  // Final fallback to localhost for development
-  let redirectUri;
+  // Construct the redirect URI
+  let redirectUri = `${appUrl}/api/email/callback/gmail`;
   
-  // For production with custom domain
-  if (appUrl) {
-    redirectUri = `${appUrl}/api/email/callback/gmail`;
-  } 
-  // For local development
-  else {
+  // For local development outside Replit (rare case)
+  if (process.env.NODE_ENV === 'development' && !appUrl.includes('replit.app') && !process.env.REPLIT_DOMAINS) {
     redirectUri = "http://localhost:5000/api/email/callback/gmail";
+    console.log('Using localhost for development:', redirectUri);
   }
   
   // Ensure the URI uses the correct protocol
-  if (redirectUri.includes('replit.app') && redirectUri.startsWith('http:')) {
-    redirectUri = redirectUri.replace('http:', 'https:');
-    console.log('Fixed protocol in redirect URI:', redirectUri);
+  if (redirectUri.includes('replit.app') || redirectUri.includes('repl.co')) {
+    // Force HTTPS for any Replit domain
+    if (redirectUri.startsWith('http:')) {
+      redirectUri = redirectUri.replace('http:', 'https:');
+      console.log('Fixed protocol in redirect URI to HTTPS');
+    }
   }
-    
+  
+  // Log final URI for debugging
   console.log(`OAuth redirect URI: ${redirectUri}`);
   
-  if (!clientId || !clientSecret) {
-    throw new Error('Missing required environment variables: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET');
-  }
-  
+  // Create and return the OAuth2 client
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 };
 
