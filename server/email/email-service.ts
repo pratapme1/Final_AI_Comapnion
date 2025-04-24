@@ -88,9 +88,11 @@ export class EmailService {
       const existingProviders = await db
         .select()
         .from(emailProviders)
-        .where(eq(emailProviders.userId, userId))
-        .where(eq(emailProviders.email, email))
-        .where(eq(emailProviders.providerType, providerType));
+        .where(
+          sql`${emailProviders.userId} = ${userId} AND 
+              ${emailProviders.email} = ${email} AND 
+              ${emailProviders.providerType} = ${providerType}`
+        );
       
       console.log('Found existing providers:', existingProviders.length);
       
@@ -259,7 +261,7 @@ export class EmailService {
         .select()
         .from(emailSyncJobs)
         .where(eq(emailSyncJobs.providerId, providerId))
-        .orderBy(emailSyncJobs.startedAt, 'desc')
+        .orderBy(sql`${emailSyncJobs.startedAt} DESC`)
         .limit(10);
       
       return syncJobs as EmailSyncJob[];
