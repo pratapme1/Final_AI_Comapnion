@@ -311,6 +311,36 @@ export class EmailService {
   }
   
   /**
+   * Get all sync jobs for a user
+   */
+  async getUserSyncJobs(userId: number): Promise<EmailSyncJob[]> {
+    try {
+      // First get all providers owned by this user
+      const userProviders = await this.getUserEmailProviders(userId);
+      
+      if (!userProviders.length) {
+        return [];
+      }
+      
+      // Get all provider IDs
+      const providerIds = userProviders.map(provider => provider.id);
+      
+      // Get all sync jobs for these providers
+      const syncJobs = await db
+        .select()
+        .from(emailSyncJobs)
+        .where(inArray(emailSyncJobs.providerId, providerIds))
+        .orderBy(sql`${emailSyncJobs.startedAt} DESC`)
+        .limit(20);
+      
+      return syncJobs as EmailSyncJob[];
+    } catch (error) {
+      console.error('Error fetching user sync jobs:', error);
+      throw new Error('Failed to fetch user sync jobs');
+    }
+  }
+  
+  /**
    * Process a single email to extract receipt data
    */
   async processEmail(providerId: number, messageId: string): Promise<any> {
