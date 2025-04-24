@@ -38,6 +38,13 @@ interface SyncJob {
   requestedLimit: number | null;
 }
 
+interface SyncOptions {
+  providerId: number;
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+}
+
 const EmailReceiptTab = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<string>("providers");
@@ -53,14 +60,6 @@ const EmailReceiptTab = () => {
     queryKey: ["/api/email/sync-jobs"],
     refetchInterval: 10000, // Refresh more frequently while syncing
   });
-  
-  // Interface for sync options
-  interface SyncOptions {
-    providerId: number;
-    startDate?: string;
-    endDate?: string;
-    limit?: number;
-  }
 
   // Start a new sync job for a provider
   const startSyncMutation = useMutation({
@@ -299,7 +298,7 @@ const EmailReceiptTab = () => {
               <EmailProvidersList 
                 providers={providers}
                 isLoading={providersQuery.isLoading}
-                onSync={(providerId) => startSyncMutation.mutate({ providerId })}
+                onSync={(options) => startSyncMutation.mutate(options)}
                 onDisconnect={(providerId) => disconnectMutation.mutate(providerId)}
                 isSyncing={isSyncing}
               />
