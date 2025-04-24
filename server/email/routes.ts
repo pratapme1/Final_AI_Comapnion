@@ -261,56 +261,74 @@ router.delete('/providers/:id', requireAuth, async (req: Request, res: Response)
  */
 router.post('/providers/:id/sync', requireAuth, async (req: Request, res: Response) => {
   try {
+    console.log('Sync endpoint called with params:', req.params, 'and body:', req.body);
     const { id } = req.params;
     const { startDate, endDate, limit } = req.body;
     const providerId = parseInt(id, 10);
     
+    console.log('Parsed providerId:', providerId);
+    
     if (isNaN(providerId)) {
+      console.log('Invalid provider ID');
       return res.status(400).json({ message: 'Invalid provider ID' });
     }
     
     // Get provider to check ownership
+    console.log('Fetching provider with ID:', providerId);
     const provider = await emailService.getProviderById(providerId);
+    console.log('Provider found:', provider ? 'yes' : 'no');
     
     if (!provider) {
+      console.log('Provider not found');
       return res.status(404).json({ message: 'Email provider not found' });
     }
     
     // Ensure user owns this provider
+    console.log('Provider userId:', provider.userId, 'Request user ID:', req.user?.id);
     if (provider.userId !== req.user!.id) {
+      console.log('Unauthorized - user does not own this provider');
       return res.status(403).json({ message: 'Unauthorized' });
     }
     
     // Parse date strings into Date objects
     const dateRangeStart = startDate ? new Date(startDate) : undefined;
     const dateRangeEnd = endDate ? new Date(endDate) : undefined;
+    console.log('Date range:', dateRangeStart, 'to', dateRangeEnd);
     
     // Parse email limit (if provided)
     const requestedLimit = limit ? parseInt(limit, 10) : undefined;
+    console.log('Requested limit:', requestedLimit);
     
     // Validation
     if (requestedLimit !== undefined && (isNaN(requestedLimit) || requestedLimit <= 0)) {
+      console.log('Invalid limit value');
       return res.status(400).json({ message: 'Invalid limit value. Must be a positive number.' });
     }
     
     // Validate dates
     if (dateRangeStart && dateRangeEnd && dateRangeStart > dateRangeEnd) {
+      console.log('Invalid date range');
       return res.status(400).json({ message: 'Start date must be before end date' });
     }
     
     // Start sync job with optional parameters
+    console.log('Starting sync job with options:', { dateRangeStart, dateRangeEnd, requestedLimit });
     const syncJob = await emailService.startSync(providerId, {
       dateRangeStart,
       dateRangeEnd,
       requestedLimit
     });
     
+    console.log('Sync job created:', syncJob?.id);
     res.status(200).json({ 
       message: 'Email sync started successfully',
       syncJob
     });
   } catch (error) {
     console.error('Error starting email sync:', error);
+    if (error instanceof Error) {
+      console.error('Error details:', error.message, error.stack);
+    }
     res.status(500).json({ 
       message: 'Failed to start email sync',
       error: error instanceof Error ? error.message : 'Unknown error' 
@@ -560,6 +578,7 @@ router.post('/process-email', requireAuth, async (req: Request, res: Response) =
  */
 router.post('/demo/connect-gmail', requireAuth, async (req: Request, res: Response) => {
   try {
+    console.log('Demo Gmail connection request:', req.body);
     const { email } = req.body;
     
     if (!email) {
@@ -567,8 +586,13 @@ router.post('/demo/connect-gmail', requireAuth, async (req: Request, res: Respon
     }
     
     const userId = req.user!.id;
+    console.log('User ID for demo connection:', userId);
     const now = new Date();
     
+    // Import db here to avoid possible circular imports
+    const { db } = require('../db');
+    
+    console.log('Creating simulated email provider...');
     // Create a simulated email provider record
     const [provider] = await db.insert(emailProviders).values({
       userId: userId,
@@ -584,6 +608,9 @@ router.post('/demo/connect-gmail', requireAuth, async (req: Request, res: Respon
       updatedAt: now
     }).returning();
     
+    console.log('Provider created:', provider.id);
+    
+    console.log('Creating simulated sync job...');
     // Create a simulated success sync job for this provider
     await db.insert(emailSyncJobs).values({
       providerId: provider.id,
@@ -596,6 +623,7 @@ router.post('/demo/connect-gmail', requireAuth, async (req: Request, res: Respon
       errorMessage: null
     });
     
+    console.log('Demo Gmail connection complete');
     res.status(200).json({ 
       success: true,
       provider: {
@@ -605,6 +633,9 @@ router.post('/demo/connect-gmail', requireAuth, async (req: Request, res: Respon
     });
   } catch (error) {
     console.error('Error connecting demo Gmail account:', error);
+    if (error instanceof Error) {
+      console.error('Error details:', error.message, error.stack);
+    }
     res.status(500).json({ 
       message: 'Failed to connect demo Gmail account',
       error: error instanceof Error ? error.message : 'Unknown error' 
