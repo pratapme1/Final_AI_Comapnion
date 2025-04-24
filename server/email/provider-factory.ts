@@ -18,13 +18,17 @@ export interface EmailProvider {
 export interface EmailSyncJob {
   id: number;
   providerId: number;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
   startedAt: Date;
   completedAt?: Date | null;
   errorMessage?: string | null;
   emailsProcessed?: number;
   emailsFound?: number;
   receiptsFound?: number;
+  shouldCancel?: boolean;
+  dateRangeStart?: Date | null;
+  dateRangeEnd?: Date | null;
+  requestedLimit?: number | null;
 }
 
 /**

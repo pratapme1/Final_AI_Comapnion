@@ -6,18 +6,24 @@ import { format, formatDistance } from "date-fns";
 
 interface EmailProvider {
   id: number;
-  provider: string;
+  providerType: string;
   email: string;
 }
 
 interface SyncJob {
   id: number;
   providerId: number;
-  status: "pending" | "in_progress" | "completed" | "failed";
-  resultsCount: number;
-  error: string | null;
+  status: "pending" | "processing" | "completed" | "failed" | "cancelled";
   startedAt: string;
   completedAt: string | null;
+  errorMessage: string | null;
+  emailsProcessed: number | null;
+  emailsFound: number | null;
+  receiptsFound: number | null;
+  shouldCancel?: boolean;
+  dateRangeStart?: string | null;
+  dateRangeEnd?: string | null;
+  requestedLimit?: number | null;
 }
 
 interface SyncJobHistoryProps {

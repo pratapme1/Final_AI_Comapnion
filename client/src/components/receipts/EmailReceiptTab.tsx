@@ -12,30 +12,30 @@ import { apiRequest, queryClient, getQueryFn } from "@/lib/queryClient";
 import EmailProvidersList from "./EmailProvidersList";
 import SyncJobHistory from "./SyncJobHistory";
 
+// Interface for EmailProvider component used in this file
 interface EmailProvider {
   id: number;
   userId: number;
-  provider: string;
+  providerType: string;
   email: string;
-  accessToken: string;
-  refreshToken: string | null;
-  expiresAt: string | null;
   lastSyncAt: string | null;
-  createdAt: string;
-  updatedAt: string;
 }
 
+// Interface for SyncJob component used in this file
 interface SyncJob {
   id: number;
-  userId: number;
   providerId: number;
-  status: "pending" | "in_progress" | "completed" | "failed";
-  resultsCount: number;
-  error: string | null;
+  status: "pending" | "processing" | "completed" | "failed" | "cancelled";
   startedAt: string;
   completedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
+  errorMessage: string | null;
+  emailsProcessed: number | null;
+  emailsFound: number | null;
+  receiptsFound: number | null;
+  shouldCancel: boolean;
+  dateRangeStart: string | null;
+  dateRangeEnd: string | null;
+  requestedLimit: number | null;
 }
 
 const EmailReceiptTab = () => {
@@ -54,16 +54,34 @@ const EmailReceiptTab = () => {
     refetchInterval: 10000, // Refresh more frequently while syncing
   });
   
+  // Interface for sync options
+  interface SyncOptions {
+    providerId: number;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+  }
+
   // Start a new sync job for a provider
   const startSyncMutation = useMutation({
-    mutationFn: async (providerId: number) => {
-      const response = await apiRequest("POST", `/api/email/providers/${providerId}/sync`);
+    mutationFn: async (options: SyncOptions) => {
+      const { providerId, startDate, endDate, limit } = options;
+      const payload: Record<string, any> = {};
+      
+      // Only include date/limit options if they're provided
+      if (startDate) payload.startDate = startDate;
+      if (endDate) payload.endDate = endDate;
+      if (limit) payload.limit = limit;
+      
+      const response = await apiRequest("POST", `/api/email/providers/${providerId}/sync`, payload);
       return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: "Sync started",
-        description: "We'll check your emails for receipts. This may take a few minutes.",
+        description: data.emailsFound 
+          ? `Found ${data.emailsFound} potential receipt emails to scan.` 
+          : "We'll check your emails for receipts. This may take a few minutes.",
       });
       
       // Refresh queries after starting a sync
@@ -211,7 +229,7 @@ const EmailReceiptTab = () => {
   const hasSyncJobs = Array.isArray(syncJobs) && syncJobs.length > 0;
   
   // Check if any sync job is in progress
-  const isSyncing = syncJobs.some(job => job.status === "pending" || job.status === "in_progress");
+  const isSyncing = syncJobs.some(job => job.status === "pending" || job.status === "processing");
   
   // Determine if we need to show the "No providers" message
   const showNoProviders = (!providersQuery.isLoading && !hasProviders);
@@ -256,7 +274,7 @@ const EmailReceiptTab = () => {
               <EmailProvidersList 
                 providers={providers}
                 isLoading={providersQuery.isLoading}
-                onSync={(providerId) => startSyncMutation.mutate(providerId)}
+                onSync={(providerId) => startSyncMutation.mutate({ providerId })}
                 onDisconnect={(providerId) => disconnectMutation.mutate(providerId)}
                 isSyncing={isSyncing}
               />
