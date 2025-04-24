@@ -141,26 +141,61 @@ export class GmailProvider {
   
   /**
    * Search for receipt emails
+   * @param tokens - OAuth tokens
+   * @param options - Search options including date ranges
+   * @returns List of email message IDs
    */
-  async searchEmails(tokens: any, query: string = ''): Promise<any[]> {
+  async searchEmails(
+    tokens: any, 
+    options?: { 
+      query?: string,
+      dateRangeStart?: Date,
+      dateRangeEnd?: Date 
+    }
+  ): Promise<any[]> {
     const oauth2Client = createOAuth2Client();
     oauth2Client.setCredentials(tokens);
     
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
     
     // Default query to look for receipt-like emails if no specific query is provided
-    const defaultQuery = 'subject:(receipt OR order OR purchase OR invoice OR confirmation) OR from:(amazon OR walmart OR target OR bestbuy OR ebay OR doordash OR uber)';
-    const searchQuery = query || defaultQuery;
+    let defaultQuery = 'subject:(receipt OR order OR purchase OR invoice OR confirmation) OR from:(amazon OR walmart OR target OR bestbuy OR ebay OR doordash OR uber)';
+    
+    // If date ranges are provided, add them to the query
+    if (options?.dateRangeStart || options?.dateRangeEnd) {
+      // Format dates for Gmail query syntax: YYYY/MM/DD
+      let dateQuery = '';
+      
+      if (options.dateRangeStart) {
+        const startDate = options.dateRangeStart;
+        const formattedStartDate = `${startDate.getFullYear()}/${(startDate.getMonth() + 1).toString().padStart(2, '0')}/${startDate.getDate().toString().padStart(2, '0')}`;
+        dateQuery += ` after:${formattedStartDate}`;
+      }
+      
+      if (options.dateRangeEnd) {
+        const endDate = options.dateRangeEnd;
+        const formattedEndDate = `${endDate.getFullYear()}/${(endDate.getMonth() + 1).toString().padStart(2, '0')}/${endDate.getDate().toString().padStart(2, '0')}`;
+        dateQuery += ` before:${formattedEndDate}`;
+      }
+      
+      // Combine the date range with the default query
+      defaultQuery = `(${defaultQuery})${dateQuery}`;
+      console.log('Search query with date filters:', defaultQuery);
+    }
+    
+    // Use provided query or the default one
+    const searchQuery = options?.query || defaultQuery;
     
     try {
       // Search for emails
       const response = await gmail.users.messages.list({
         userId: 'me',
         q: searchQuery,
-        maxResults: 20 // Limit to 20 results for performance
+        maxResults: 50 // Increase to 50 with ability to be limited by the sync job
       });
       
       const messageIds = response.data.messages || [];
+      console.log(`Found ${messageIds.length} potential receipt emails`);
       
       // Return list of message IDs
       return messageIds.map(message => ({

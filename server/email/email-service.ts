@@ -205,8 +205,18 @@ export class EmailService {
   
   /**
    * Start syncing emails from a provider
+   * @param providerId - The ID of the email provider
+   * @param options - Optional parameters for the sync job
+   * @returns The created sync job
    */
-  async startSync(providerId: number): Promise<EmailSyncJob> {
+  async startSync(
+    providerId: number, 
+    options?: {
+      dateRangeStart?: Date,
+      dateRangeEnd?: Date,
+      requestedLimit?: number
+    }
+  ): Promise<EmailSyncJob> {
     try {
       // Get provider
       const provider = await this.getProviderById(providerId);
@@ -215,13 +225,17 @@ export class EmailService {
         throw new Error('Provider not found');
       }
       
-      // Create sync job
+      // Create sync job with optional parameters
       const [syncJob] = await db
         .insert(emailSyncJobs)
         .values({
           providerId,
           status: 'pending',
-          startedAt: new Date()
+          startedAt: new Date(),
+          dateRangeStart: options?.dateRangeStart,
+          dateRangeEnd: options?.dateRangeEnd,
+          requestedLimit: options?.requestedLimit,
+          shouldCancel: false
         })
         .returning();
       
@@ -232,6 +246,31 @@ export class EmailService {
     } catch (error) {
       console.error('Error starting email sync:', error);
       throw new Error('Failed to start email sync');
+    }
+  }
+  
+  /**
+   * Cancel a running sync job
+   * @param syncJobId - The ID of the sync job to cancel
+   * @returns The updated sync job
+   */
+  async cancelSyncJob(syncJobId: number): Promise<EmailSyncJob> {
+    try {
+      // Mark the job for cancellation
+      const [updatedJob] = await db
+        .update(emailSyncJobs)
+        .set({
+          shouldCancel: true
+        })
+        .where(eq(emailSyncJobs.id, syncJobId))
+        .returning();
+      
+      console.log(`Marked job ${syncJobId} for cancellation`);
+      
+      return updatedJob as EmailSyncJob;
+    } catch (error) {
+      console.error('Error cancelling sync job:', error);
+      throw new Error('Failed to cancel sync job');
     }
   }
   
@@ -303,6 +342,12 @@ export class EmailService {
     // Run async without awaiting
     (async () => {
       try {
+        // Get the sync job to check for date ranges and limits
+        const syncJob = await this.getSyncJob(syncJobId);
+        if (!syncJob) {
+          throw new Error('Sync job not found');
+        }
+        
         // Update job status to processing
         await db
           .update(emailSyncJobs)
@@ -315,8 +360,19 @@ export class EmailService {
         // Verify and refresh tokens if needed
         provider.tokens = await adapter.verifyTokens(provider.tokens);
         
-        // Search for potential receipt emails
-        const emails = await adapter.searchEmails(provider.tokens);
+        // Search for potential receipt emails with date filter
+        const searchOptions = {
+          dateRangeStart: syncJob.dateRangeStart,
+          dateRangeEnd: syncJob.dateRangeEnd
+        };
+        const emails = await adapter.searchEmails(provider.tokens, searchOptions);
+        
+        // Apply limit if specified
+        let emailsToProcess = emails;
+        if (syncJob.requestedLimit && syncJob.requestedLimit > 0 && syncJob.requestedLimit < emails.length) {
+          emailsToProcess = emails.slice(0, syncJob.requestedLimit);
+          console.log(`Limiting email processing to ${syncJob.requestedLimit} emails out of ${emails.length} found`);
+        }
         
         // Update job with email count
         await db
@@ -330,8 +386,32 @@ export class EmailService {
         let receiptsFound = 0;
         
         // Process each email
-        for (const email of emails) {
+        for (const email of emailsToProcess) {
+          // Check for cancellation request
+          const currentJob = await this.getSyncJob(syncJobId);
+          if (currentJob?.shouldCancel) {
+            console.log(`Cancelling job ${syncJobId} as requested`);
+            
+            // Mark job as cancelled
+            await db
+              .update(emailSyncJobs)
+              .set({ 
+                status: 'cancelled',
+                completedAt: new Date(),
+                emailsProcessed: processedCount,
+                receiptsFound,
+                errorMessage: 'Job cancelled by user request'
+              })
+              .where(eq(emailSyncJobs.id, syncJobId));
+            
+            return; // Exit the function
+          }
+          
           try {
+            // Add a small delay to prevent rate limiting (100ms)
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Extract receipt data from email
             const result = await this.extractor.extractReceiptData(provider, email.id);
             
             processedCount++;
