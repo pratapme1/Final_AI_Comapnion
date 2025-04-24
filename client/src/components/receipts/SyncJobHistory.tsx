@@ -1,7 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle2, AlertCircle, Clock, RefreshCw, Mail } from "lucide-react";
+import { CheckCircle2, AlertCircle, Clock, RefreshCw, Mail, XCircle } from "lucide-react";
 import { format, formatDistance } from "date-fns";
 
 interface EmailProvider {
@@ -30,9 +31,10 @@ interface SyncJobHistoryProps {
   syncJobs: SyncJob[];
   isLoading: boolean;
   providers: EmailProvider[];
+  onCancelJob?: (jobId: number) => void;
 }
 
-const SyncJobHistory = ({ syncJobs, isLoading, providers }: SyncJobHistoryProps) => {
+const SyncJobHistory = ({ syncJobs, isLoading, providers, onCancelJob }: SyncJobHistoryProps) => {
   // Function to find provider email by ID
   const getProviderEmail = (providerId: number) => {
     const provider = providers.find(p => p.id === providerId);
@@ -63,7 +65,7 @@ const SyncJobHistory = ({ syncJobs, isLoading, providers }: SyncJobHistoryProps)
             Pending
           </Badge>
         );
-      case "in_progress":
+      case "processing":
         return (
           <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200 text-xs">
             <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
@@ -127,19 +129,52 @@ const SyncJobHistory = ({ syncJobs, isLoading, providers }: SyncJobHistoryProps)
               
               {job.status === "completed" && (
                 <div className="mt-1 text-sm text-green-600">
-                  Found {job.resultsCount} receipt{job.resultsCount !== 1 ? "s" : ""}
+                  {job.receiptsFound ? (
+                    <>Found {job.receiptsFound} receipt{job.receiptsFound !== 1 ? "s" : ""} from {job.emailsProcessed || 0} emails</>
+                  ) : (
+                    <>Processed {job.emailsProcessed || 0} emails</>
+                  )}
                 </div>
               )}
               
-              {job.status === "failed" && job.error && (
+              {job.status === "processing" && (
+                <div className="mt-1 text-sm text-blue-600">
+                  {job.emailsProcessed ? (
+                    <>Processed {job.emailsProcessed} of {job.emailsFound || "?"} emails</>
+                  ) : (
+                    <>Scanning emails...</>
+                  )}
+                </div>
+              )}
+              
+              {job.status === "failed" && job.errorMessage && (
                 <div className="mt-1 text-sm text-red-600">
-                  Error: {job.error}
+                  Error: {job.errorMessage}
+                </div>
+              )}
+              
+              {job.status === "cancelled" && (
+                <div className="mt-1 text-sm text-gray-600">
+                  Sync was cancelled
                 </div>
               )}
             </div>
             
-            <div className="flex flex-col items-end">
+            <div className="flex flex-col items-end gap-2">
               {getStatusBadge(job.status)}
+              
+              {/* Cancel button for in-progress jobs */}
+              {(job.status === "pending" || job.status === "processing") && onCancelJob && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-xs h-7 text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={() => onCancelJob(job.id)}
+                >
+                  <XCircle className="w-3 h-3 mr-1" />
+                  Cancel
+                </Button>
+              )}
             </div>
           </div>
         </Card>

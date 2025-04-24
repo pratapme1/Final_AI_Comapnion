@@ -96,6 +96,30 @@ const EmailReceiptTab = () => {
     },
   });
   
+  // Cancel a sync job
+  const cancelSyncMutation = useMutation({
+    mutationFn: async (syncJobId: number) => {
+      const response = await apiRequest("POST", `/api/email/sync/${syncJobId}/cancel`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Sync cancelled",
+        description: "The email sync job has been cancelled.",
+      });
+      
+      // Refresh queries after cancellation
+      queryClient.invalidateQueries({ queryKey: ["/api/email/sync-jobs"] });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Failed to cancel sync",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    },
+  });
+  
   // Disconnect an email provider
   const disconnectMutation = useMutation({
     mutationFn: async (providerId: number) => {
@@ -125,7 +149,8 @@ const EmailReceiptTab = () => {
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
   
-  const isGmailConfigured = configQuery.data?.providers?.gmail === true;
+  const configData = configQuery.data as any || { providers: { gmail: false } };
+  const isGmailConfigured = configData.providers?.gmail === true;
   
   // Connect a new email provider
   const connectGmail = async () => {
@@ -329,6 +354,7 @@ const EmailReceiptTab = () => {
               syncJobs={syncJobs}
               isLoading={syncJobsQuery.isLoading}
               providers={providers}
+              onCancelJob={(jobId) => cancelSyncMutation.mutate(jobId)}
             />
           </TabsContent>
         </Tabs>
