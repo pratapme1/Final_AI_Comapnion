@@ -3,6 +3,7 @@ import { emailProviders, emailSyncJobs } from '@shared/schema';
 import { EmailProvider, EmailProviderFactory, EmailProviderType, EmailSyncJob } from './provider-factory';
 import { EmailReceiptExtractor } from './receipt-extractor';
 import { eq, sql } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm/expressions';
 
 /**
  * Service for managing email providers and receipt extraction

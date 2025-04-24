@@ -461,6 +461,26 @@ router.post('/process-callback/:providerType', requireAuth, async (req: Request,
 });
 
 /**
+ * Get all sync jobs for the authenticated user
+ */
+router.get('/sync-jobs', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    
+    // Get all sync jobs for this user
+    const syncJobs = await emailService.getUserSyncJobs(userId);
+    
+    res.status(200).json(syncJobs);
+  } catch (error) {
+    console.error('Error fetching all sync jobs:', error);
+    res.status(500).json({ 
+      message: 'Failed to fetch sync jobs',
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+});
+
+/**
  * Get sync jobs for a provider
  */
 router.get('/providers/:id/sync-jobs', requireAuth, async (req: Request, res: Response) => {
