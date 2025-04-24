@@ -51,13 +51,17 @@ export type EmailProvider = typeof emailProviders.$inferSelect;
 export const emailSyncJobs = pgTable("email_sync_jobs", {
   id: serial("id").primaryKey(),
   providerId: integer("provider_id").notNull().references(() => emailProviders.id, { onDelete: "cascade" }),
-  status: text("status").notNull(), // 'pending', 'processing', 'completed', 'failed'
+  status: text("status").notNull(), // 'pending', 'processing', 'completed', 'failed', 'cancelled'
   startedAt: timestamp("started_at").notNull(),
   completedAt: timestamp("completed_at"),
   emailsFound: integer("emails_found"),
   emailsProcessed: integer("emails_processed"),
   receiptsFound: integer("receipts_found"),
-  errorMessage: text("error_message")
+  errorMessage: text("error_message"),
+  shouldCancel: boolean("should_cancel").default(false),
+  dateRangeStart: timestamp("date_range_start"),
+  dateRangeEnd: timestamp("date_range_end"),
+  requestedLimit: integer("requested_limit") // Limit the number of emails to process
 });
 
 export const emailSyncJobsRelations = relations(emailSyncJobs, ({ one }) => ({
@@ -71,6 +75,9 @@ export const insertEmailSyncJobSchema = createInsertSchema(emailSyncJobs).pick({
   providerId: true,
   status: true,
   startedAt: true,
+  dateRangeStart: true,
+  dateRangeEnd: true,
+  requestedLimit: true,
 });
 
 export type InsertEmailSyncJob = z.infer<typeof insertEmailSyncJobSchema>;

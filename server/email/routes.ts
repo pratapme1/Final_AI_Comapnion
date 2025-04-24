@@ -262,6 +262,7 @@ router.delete('/providers/:id', requireAuth, async (req: Request, res: Response)
 router.post('/providers/:id/sync', requireAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const { startDate, endDate, limit } = req.body;
     const providerId = parseInt(id, 10);
     
     if (isNaN(providerId)) {
@@ -280,8 +281,29 @@ router.post('/providers/:id/sync', requireAuth, async (req: Request, res: Respon
       return res.status(403).json({ message: 'Unauthorized' });
     }
     
-    // Start sync job
-    const syncJob = await emailService.startSync(providerId);
+    // Parse date strings into Date objects
+    const dateRangeStart = startDate ? new Date(startDate) : undefined;
+    const dateRangeEnd = endDate ? new Date(endDate) : undefined;
+    
+    // Parse email limit (if provided)
+    const requestedLimit = limit ? parseInt(limit, 10) : undefined;
+    
+    // Validation
+    if (requestedLimit !== undefined && (isNaN(requestedLimit) || requestedLimit <= 0)) {
+      return res.status(400).json({ message: 'Invalid limit value. Must be a positive number.' });
+    }
+    
+    // Validate dates
+    if (dateRangeStart && dateRangeEnd && dateRangeStart > dateRangeEnd) {
+      return res.status(400).json({ message: 'Start date must be before end date' });
+    }
+    
+    // Start sync job with optional parameters
+    const syncJob = await emailService.startSync(providerId, {
+      dateRangeStart,
+      dateRangeEnd,
+      requestedLimit
+    });
     
     res.status(200).json({ 
       message: 'Email sync started successfully',
@@ -291,6 +313,54 @@ router.post('/providers/:id/sync', requireAuth, async (req: Request, res: Respon
     console.error('Error starting email sync:', error);
     res.status(500).json({ 
       message: 'Failed to start email sync',
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+});
+
+/**
+ * Cancel an in-progress sync job
+ */
+router.post('/sync/:id/cancel', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const syncJobId = parseInt(id, 10);
+    
+    if (isNaN(syncJobId)) {
+      return res.status(400).json({ message: 'Invalid sync job ID' });
+    }
+    
+    const syncJob = await emailService.getSyncJob(syncJobId);
+    
+    if (!syncJob) {
+      return res.status(404).json({ message: 'Sync job not found' });
+    }
+    
+    // Get provider to check ownership
+    const provider = await emailService.getProviderById(syncJob.providerId);
+    
+    if (!provider || provider.userId !== req.user!.id) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+    
+    // Only allow cancellation of running jobs
+    if (syncJob.status !== 'processing' && syncJob.status !== 'pending') {
+      return res.status(400).json({ 
+        message: `Cannot cancel job with status: ${syncJob.status}. Only 'processing' or 'pending' jobs can be cancelled.` 
+      });
+    }
+    
+    // Mark the job for cancellation
+    const updatedJob = await emailService.cancelSyncJob(syncJobId);
+    
+    res.status(200).json({
+      message: 'Sync job cancellation requested',
+      job: updatedJob
+    });
+  } catch (error) {
+    console.error('Error cancelling sync job:', error);
+    res.status(500).json({ 
+      message: 'Failed to cancel sync job',
       error: error instanceof Error ? error.message : 'Unknown error' 
     });
   }
