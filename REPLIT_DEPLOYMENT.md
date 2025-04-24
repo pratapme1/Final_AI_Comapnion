@@ -1,93 +1,147 @@
-# Deploying Smart Ledger to Replit
+# Replit Deployment Guide for Smart Ledger
 
-This guide provides step-by-step instructions for deploying Smart Ledger to Replit's production environment with full Gmail integration.
+This guide provides step-by-step instructions for deploying the Smart Ledger application to Replit.
 
-## Current Replit Domain
+## Prerequisites
 
-Your application is using this custom Replit domain:
+Before deploying, ensure you have:
+
+1. A Replit account
+2. All required environment variables ready
+3. Google Cloud OAuth credentials configured correctly
+4. Access to a PostgreSQL database
+
+## Environment Setup
+
+### Required Environment Variables
+
+Set the following environment variables in your Replit environment:
+
+- `DATABASE_URL`: Your PostgreSQL database connection string
+- `APP_URL`: Your Replit application URL (e.g., `https://your-app.replit.app`)
+- `SESSION_SECRET`: A strong random string used for session encryption
+- `GOOGLE_CLIENT_ID`: Your Google OAuth client ID
+- `GOOGLE_CLIENT_SECRET`: Your Google OAuth client secret
+- `OPENAI_API_KEY`: Your OpenAI API key for AI functionality
+
+### Database Configuration
+
+1. Make sure your database is accessible from Replit
+2. Run the database migrations to set up the schema:
+   ```
+   NODE_ENV=production npm run db:push
+   ```
+
+## Deployment Process
+
+### 1. Clone Repository to Replit
+
+1. Create a new Replit using the "Import from GitHub" option
+2. Enter your GitHub repository URL
+3. Select the appropriate language (Node.js)
+
+### 2. Install Dependencies
+
+Replit will automatically run `npm install` to install dependencies.
+
+### 3. Configure Secrets
+
+1. Go to the "Secrets" tab in Replit
+2. Add all the required environment variables listed above
+3. Make sure sensitive keys (like `OPENAI_API_KEY`) are properly secured
+
+### 4. Configure Google OAuth
+
+In your Google Cloud Console project:
+
+1. Add your Replit domain to the Authorized JavaScript origins:
+   - `https://your-app.replit.app`
+
+2. Add the callback URL to Authorized redirect URIs:
+   - `https://your-app.replit.app/api/email/callback/gmail`
+
+### 5. Configure Run Command
+
+In the `.replit` file, ensure the run command is set to:
+
 ```
-https://ai-companion-vishnupratapkum.replit.app
+run = "npm run start:production"
 ```
 
-Use this domain when configuring external services like Google OAuth.
+### 6. Deploy the Application
 
-## 1. Environment Variables Setup
+1. Click the "Run" button in Replit
+2. Replit will build and start your application
+3. Your application will be available at your Replit URL
 
-Set these environment variables in Replit's Secrets tab:
+## Troubleshooting
 
-| Secret Name | Description | Required |
-|-------------|-------------|----------|
-| `OPENAI_API_KEY` | Your OpenAI API key for AI features | Yes |
-| `GOOGLE_CLIENT_ID` | Client ID from Google Cloud Console | Yes (for Gmail) |
-| `GOOGLE_CLIENT_SECRET` | Client Secret from Google Cloud Console | Yes (for Gmail) |
-| `SESSION_SECRET` | Random string for session encryption | Yes |
-| `APP_URL` | Your Replit domain with https:// prefix (e.g., https://ai-companion-vishnupratapkum.replit.app) | Recommended |
-| `CUSTOM_DOMAIN` | Your custom domain name without protocol (e.g., ai-companion-vishnupratapkum.replit.app) | No |
+### OAuth Issues
 
-The application has been updated to automatically detect your Replit domain. However, explicitly setting `APP_URL` or `CUSTOM_DOMAIN` can help ensure the correct OAuth redirect URIs are used.
+If you encounter OAuth-related issues:
 
-## 2. Google OAuth Configuration
+1. Verify that `APP_URL` is set correctly
+2. Ensure Google OAuth credentials have the correct domains and callback URLs
+3. Check server logs for detailed error messages
+4. See the `REPLIT_OAUTH_FIX.md` document for specific fixes
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Navigate to your project's "APIs & Services" > "Credentials" page
-3. Create or edit an OAuth client ID (Web application type)
-4. Add these URLs:
-   - **Authorized JavaScript origins**: 
-     ```
-     https://ai-companion-vishnupratapkum.replit.app
-     ```
-   - **Authorized redirect URIs**:
-     ```
-     https://ai-companion-vishnupratapkum.replit.app/api/email/callback/gmail
-     ```
-5. Save and copy the Client ID and Client Secret
+### Database Connection Issues
 
-## 3. Deployment Process
+If the application can't connect to the database:
 
-1. Click the "Deploy" button in the Replit UI
-2. Select "Web Service" as the deployment type
-3. Your application will be deployed to your Replit domain
-4. Database migrations will be applied automatically on first run
+1. Verify the `DATABASE_URL` is correct and accessible from Replit
+2. Check if database credentials are valid
+3. Ensure the database schema is properly set up
+4. Verify network rules allow connections from Replit IP ranges
 
-## 4. Post-Deployment Verification
+### Environment Variable Issues
 
-1. Visit your Replit domain in a browser
-2. Register a new account or login with an existing one
-3. Navigate to the "Email Receipts" tab in the Receipts section
-4. Try connecting your Gmail account using the "Connect Gmail" button
-5. Verify that the OAuth flow completes successfully
-6. Check that email scanning functionality works correctly
+If environment variables aren't being recognized:
 
-## 5. Troubleshooting
+1. Check the Secrets tab in Replit to ensure all variables are set
+2. Restart the Replit to ensure environment variables are loaded
+3. Verify variable names match exactly what the application expects
 
-### Gmail OAuth Issues
+## Monitoring and Maintenance
 
-If the Gmail integration isn't working properly:
+### Viewing Logs
 
-1. **Check the browser console** for any error messages related to the OAuth flow
-2. **Verify the redirect URI** - The most common error is "redirect_uri_mismatch" which occurs when the URI in your request doesn't match the one registered in Google Cloud Console
-3. **Inspect redirect URLs in the browser** - When connecting Gmail, check if the URL is using HTTPS
-4. **Check server logs** - Look for "OAuth redirect URI" log messages to confirm the correct URI is being used
-5. **CORS errors** - If you see CORS errors in the browser console, the application has been updated to handle this by using client-side redirects instead of server-side redirects
-6. **Domain mismatch** - If the redirect URI uses a different domain than your custom domain, check that the `APP_URL` environment variable is correctly set
+1. Use the Replit console to view application logs
+2. Check for any error messages or warnings
 
-### Database Issues
+### Updating the Application
 
-If encountering database issues:
+To update your deployed application:
 
-1. Run `npm run db:push` in the Replit Shell to force schema updates
-2. Check database migrations have applied correctly
-3. Verify database tables exist and have the correct schema
+1. Push changes to your GitHub repository
+2. Replit will automatically sync with the latest code
+3. Restart the Replit to apply the changes
 
-## 6. Important Notes
+### Database Management
 
-- **HTTPS is required** for OAuth to work properly. Replit provides this automatically.
-- **Database persistence** is handled by Replit's built-in PostgreSQL database.
-- **Frontend assets** are served from the Express server in production mode.
-- **Regular updates** to your application can be made by re-deploying when changes are committed.
+For database maintenance:
 
-## 7. Additional Resources
+1. Use the `execute_sql_tool` for direct database operations
+2. Regular backups are recommended for data safety
+3. Use migration tools for schema changes
 
-- For more general deployment information, see [DEPLOYMENT.md](DEPLOYMENT.md)
-- For Gmail-specific configuration details, see [GMAIL_INTEGRATION.md](GMAIL_INTEGRATION.md)
-- For production checklist, see [PRODUCTION_CHECKLIST.md](PRODUCTION_CHECKLIST.md)
+## Production Checklist
+
+Before finalizing your deployment, ensure:
+
+1. All environment variables are properly set
+2. Database migrations are complete
+3. Google OAuth is correctly configured
+4. HTTPS is enabled (automatically handled by Replit)
+5. The application can handle production traffic
+6. Error logging is properly configured
+7. All sensitive data is securely stored
+
+## Support and Resources
+
+If you encounter issues with Replit deployment:
+
+1. Check the Replit documentation: https://docs.replit.com/
+2. Review application logs for specific error messages
+3. Consult the `REPLIT_OAUTH_FIX.md` document for OAuth-specific solutions
+4. Check the GitHub repository issues for known problems

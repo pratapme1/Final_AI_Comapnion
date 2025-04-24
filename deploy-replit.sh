@@ -1,107 +1,105 @@
 #!/bin/bash
 
 # Smart Ledger Replit Deployment Script
-# Usage: ./deploy-replit.sh
+# This script prepares and deploys the application to Replit environment
 
-echo "----------------------------------------"
-echo "Smart Ledger Replit Deployment Script"
-echo "----------------------------------------"
+# Display a header
+echo "====================================================="
+echo "      Smart Ledger Replit Deployment Script"
+echo "====================================================="
+echo
 
-# Check required environment variables
+# Check if running in Replit environment
+if [ -z "$REPL_ID" ]; then
+  echo "❌ Error: This script should be run in a Replit environment."
+  echo "Please run this script directly in your Replit console."
+  exit 1
+fi
+
+# Check for required environment variables
 echo "Checking environment variables..."
-REQUIRED_VARS=("OPENAI_API_KEY" "GOOGLE_CLIENT_ID" "GOOGLE_CLIENT_SECRET" "SESSION_SECRET")
-MISSING_VARS=()
+REQUIRED_VARS=("DATABASE_URL" "APP_URL" "SESSION_SECRET" "OPENAI_API_KEY")
+MISSING_VARS=0
 
 for VAR in "${REQUIRED_VARS[@]}"; do
   if [ -z "${!VAR}" ]; then
-    MISSING_VARS+=("$VAR")
+    echo "❌ Missing required environment variable: $VAR"
+    MISSING_VARS=$((MISSING_VARS+1))
+  else
+    echo "✅ Found environment variable: $VAR"
   fi
 done
 
-if [ ${#MISSING_VARS[@]} -ne 0 ]; then
-  echo "❌ Missing required environment variables:"
-  for VAR in "${MISSING_VARS[@]}"; do
-    echo "   - $VAR"
-  done
-  echo "Please set these in the Replit Secrets tab before deploying."
+# Check Google OAuth variables if Gmail integration is needed
+if [ -z "$GOOGLE_CLIENT_ID" ] || [ -z "$GOOGLE_CLIENT_SECRET" ]; then
+  echo "⚠️  Warning: Google OAuth credentials are missing. Gmail integration will not work."
+fi
+
+if [ $MISSING_VARS -gt 0 ]; then
+  echo
+  echo "❌ Error: $MISSING_VARS required environment variables are missing."
+  echo "Please add them in the Secrets tab in your Replit project."
   exit 1
 fi
 
-echo "✅ Environment variables check passed"
-
-# Set NODE_ENV to production for deployment
+# Set NODE_ENV to production
 export NODE_ENV=production
 
+echo
+echo "Preparing for deployment..."
+
+# Install dependencies
+echo "Installing dependencies..."
+npm ci
+
 # Build the application
-echo "Building the application..."
+echo "Building application..."
 npm run build
 
-if [ $? -ne 0 ]; then
-  echo "❌ Build failed. Check the errors above."
-  exit 1
-fi
-
-echo "✅ Build complete"
-
-# Migrate the database
-echo "Migrating database schema..."
+# Run database migrations
+echo "Running database migrations..."
 npm run db:push
 
+# Check if migrations were successful
 if [ $? -ne 0 ]; then
-  echo "❌ Database migration failed. Check the errors above."
+  echo "❌ Error: Database migrations failed."
+  echo "Please check your database connection and try again."
   exit 1
 fi
 
-echo "✅ Database migration complete"
-
-# Create default categories if needed
-echo "Setting up default data..."
-node init-db.js
-
-if [ $? -ne 0 ]; then
-  echo "❌ Default data setup failed. Check the errors above."
-  exit 1
-fi
-
-echo "✅ Default data setup complete"
-
-# Set up APP_URL if not already set
-if [ -z "$APP_URL" ]; then
-  # Use custom domain if provided in environment
-  if [ -n "$CUSTOM_DOMAIN" ]; then
-    export APP_URL="https://$CUSTOM_DOMAIN"
-    echo "ℹ️ APP_URL not set, using custom domain: $APP_URL"
-  # Otherwise, use Replit domain if available
-  elif [ -n "$REPLIT_DOMAINS" ]; then
-    DOMAIN=$(echo $REPLIT_DOMAINS | cut -d ',' -f1)
-    export APP_URL="https://$DOMAIN"
-    echo "ℹ️ APP_URL not set, using Replit domain: $APP_URL"
-  else
-    echo "⚠️ Warning: Unable to determine APP_URL automatically"
+# Create admin user if requested
+if [ "$1" = "--create-admin" ]; then
+  if [ -z "$2" ] || [ -z "$3" ]; then
+    echo "❌ Error: Admin username and password required."
+    echo "Usage: ./deploy-replit.sh --create-admin <username> <password>"
+    exit 1
   fi
-else
-  echo "ℹ️ Using configured APP_URL: $APP_URL"
+  
+  echo "Creating admin user..."
+  node create-admin.js "$2" "$3"
+  
+  if [ $? -ne 0 ]; then
+    echo "❌ Error: Failed to create admin user."
+    exit 1
+  fi
+  
+  echo "✅ Admin user created successfully."
 fi
 
-# Set the known custom domain if not using automatic detection
-if [ -z "$CUSTOM_DOMAIN" ] && [ -z "$APP_URL" ]; then
-  export CUSTOM_DOMAIN="ai-companion-vishnupratapkum.replit.app"
-  export APP_URL="https://$CUSTOM_DOMAIN"
-  echo "ℹ️ Using known custom domain: $APP_URL"
-fi
+# Start the application
+echo
+echo "====================================================="
+echo "      Deployment Completed Successfully"
+echo "====================================================="
+echo
+echo "Your application is now deployed and running at:"
+echo "$APP_URL"
+echo
+echo "To start the application manually, run:"
+echo "npm run start:production"
+echo
+echo "For troubleshooting, refer to REPLIT_DEPLOYMENT.md"
+echo "====================================================="
 
-echo ""
-echo "----------------------------------------"
-echo "✅ Deployment preparation complete!"
-echo "----------------------------------------"
-echo ""
-echo "Your application is ready to be deployed on Replit."
-echo "Click the 'Deploy' button in the Replit UI to complete deployment."
-echo ""
-echo "After deployment, your application will be available at:"
-echo "  $APP_URL"
-echo ""
-echo "Google OAuth Redirect URI to configure:"
-echo "  $APP_URL/api/email/callback/gmail"
-echo ""
-echo "----------------------------------------"
+# Start the application
+npm run start:production
